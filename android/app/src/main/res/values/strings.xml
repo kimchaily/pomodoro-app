@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Pomodoro</string>
+    <string name="title_activity_main">Pomodoro</string>
+    <string name="package_name">com.kimchaily.pomodoro</string>
+    <string name="custom_url_scheme">com.kimchaily.pomodoro</string>
+</resources>

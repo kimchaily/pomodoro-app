@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#e25555">
+  <meta name="description" content="Pomodoro Fokus-Timer mit Aufgaben, Statistik und Benachrichtigungen – offline nutzbar.">
+  <title>Pomodoro</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body data-mode="focus">
+
+  <header class="topbar">
+    <h1>🍅 Pomodoro</h1>
+    <div class="topbar-actions">
+      <button id="btn-install" class="icon-btn" hidden title="App installieren">⬇️</button>
+      <button id="btn-stats" class="icon-btn" title="Statistik" aria-label="Statistik">📊</button>
+      <button id="btn-settings" class="icon-btn" title="Einstellungen" aria-label="Einstellungen">⚙️</button>
+    </div>
+  </header>
+
+  <main>
+    <nav class="mode-tabs" role="tablist">
+      <button class="mode-tab active" data-mode="focus" role="tab">Fokus</button>
+      <button class="mode-tab" data-mode="short" role="tab">Kurze Pause</button>
+      <button class="mode-tab" data-mode="long" role="tab">Lange Pause</button>
+    </nav>
+
+    <section class="timer-card">
+      <div class="ring-wrap">
+        <svg class="ring" viewBox="0 0 300 300" aria-hidden="true">
+          <circle class="ring-bg" cx="150" cy="150" r="138"></circle>
+          <circle class="ring-fg" cx="150" cy="150" r="138" id="ring-progress"></circle>
+        </svg>
+        <div class="ring-center">
+          <div class="time" id="time-display">25:00</div>
+          <div class="session-label" id="session-label">Bereit für Fokus</div>
+          <div class="cycle-dots" id="cycle-dots" title="Pomodoros bis zur langen Pause"></div>
+        </div>
+      </div>
+
+      <div class="controls">
+        <button id="btn-reset" class="ctrl-btn small" title="Zurücksetzen (R)">↺</button>
+        <button id="btn-start" class="ctrl-btn primary" title="Start/Pause (Leertaste)">Start</button>
+        <button id="btn-skip" class="ctrl-btn small" title="Überspringen (S)">⏭</button>
+      </div>
+
+      <div class="active-task" id="active-task-display" hidden>
+        <span class="active-task-label">Aktuelle Aufgabe:</span>
+        <span id="active-task-name"></span>
+      </div>
+    </section>
+
+    <section class="card tasks-card">
+      <h2>Aufgaben</h2>
+      <form id="task-form" class="task-form" autocomplete="off">
+        <input type="text" id="task-input" placeholder="Woran arbeitest du?" maxlength="120" required>
+        <input type="number" id="task-est" min="1" max="20" value="1" title="Geschätzte Pomodoros">
+        <button type="submit" class="add-btn" title="Aufgabe hinzufügen">+</button>
+      </form>
+      <ul id="task-list" class="task-list"></ul>
+      <p id="task-empty" class="muted">Noch keine Aufgaben – füge eine hinzu und wähle sie aus, damit Pomodoros darauf gezählt werden.</p>
+      <div class="task-footer" id="task-footer" hidden>
+        <button id="btn-clear-done" class="text-btn">Erledigte entfernen</button>
+      </div>
+    </section>
+  </main>
+
+  <!-- Statistik -->
+  <dialog id="stats-dialog" class="sheet">
+    <div class="sheet-head">
+      <h2>📊 Statistik</h2>
+      <button class="icon-btn close-dialog" data-close="stats-dialog" aria-label="Schließen">✕</button>
+    </div>
+    <div class="stat-grid">
+      <div class="stat"><div class="stat-num" id="stat-today">0</div><div class="stat-label">Heute</div></div>
+      <div class="stat"><div class="stat-num" id="stat-week">0</div><div class="stat-label">Diese Woche</div></div>
+      <div class="stat"><div class="stat-num" id="stat-total">0</div><div class="stat-label">Gesamt</div></div>
+      <div class="stat"><div class="stat-num" id="stat-streak">0</div><div class="stat-label">Tage-Serie 🔥</div></div>
+    </div>
+    <h3>Letzte 7 Tage</h3>
+    <div class="chart" id="chart"></div>
+    <p class="muted"><span id="stat-minutes">0</span> Minuten Fokuszeit insgesamt</p>
+    <button id="btn-reset-stats" class="text-btn danger">Statistik zurücksetzen</button>
+  </dialog>
+
+  <!-- Einstellungen -->
+  <dialog id="settings-dialog" class="sheet">
+    <div class="sheet-head">
+      <h2>⚙️ Einstellungen</h2>
+      <button class="icon-btn close-dialog" data-close="settings-dialog" aria-label="Schließen">✕</button>
+    </div>
+
+    <h3>Dauer (Minuten)</h3>
+    <div class="setting-row"><label for="set-focus">Fokus</label><input type="number" id="set-focus" min="1" max="120"></div>
+    <div class="setting-row"><label for="set-short">Kurze Pause</label><input type="number" id="set-short" min="1" max="60"></div>
+    <div class="setting-row"><label for="set-long">Lange Pause</label><input type="number" id="set-long" min="1" max="60"></div>
+    <div class="setting-row"><label for="set-long-every">Lange Pause nach … Pomodoros</label><input type="number" id="set-long-every" min="2" max="8"></div>
+
+    <h3>Automatik</h3>
+    <div class="setting-row"><label for="set-auto-breaks">Pausen automatisch starten</label><input type="checkbox" id="set-auto-breaks"></div>
+    <div class="setting-row"><label for="set-auto-focus">Fokus automatisch starten</label><input type="checkbox" id="set-auto-focus"></div>
+
+    <h3>Ton &amp; Signale</h3>
+    <div class="setting-row"><label for="set-sound">Klang</label>
+      <select id="set-sound">
+        <option value="chime">Glockenspiel</option>
+        <option value="bell">Glocke</option>
+        <option value="digital">Digital</option>
+        <option value="none">Kein Ton</option>
+      </select>
+    </div>
+    <div class="setting-row"><label for="set-volume">Lautstärke</label>
+      <span class="row-inline"><input type="range" id="set-volume" min="0" max="100"><button id="btn-test-sound" class="text-btn" type="button">Test</button></span>
+    </div>
+    <div class="setting-row"><label for="set-tick">Ticken während Fokus</label><input type="checkbox" id="set-tick"></div>
+    <div class="setting-row"><label for="set-notify">Benachrichtigungen</label><input type="checkbox" id="set-notify"></div>
+    <div class="setting-row"><label for="set-vibrate">Vibration</label><input type="checkbox" id="set-vibrate"></div>
+
+    <h3>Anzeige</h3>
+    <div class="setting-row"><label for="set-wakelock">Bildschirm wachhalten</label><input type="checkbox" id="set-wakelock"></div>
+    <div class="setting-row"><label for="set-theme">Design</label>
+      <select id="set-theme">
+        <option value="auto">Automatisch</option>
+        <option value="light">Hell</option>
+        <option value="dark">Dunkel</option>
+      </select>
+    </div>
+
+    <p class="muted hint">Tastenkürzel: Leertaste = Start/Pause · R = Zurücksetzen · S = Überspringen</p>
+  </dialog>
+
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,14 @@
+{
+  "appId": "com.kimchaily.pomodoro",
+  "appName": "Pomodoro",
+  "webDir": "docs",
+  "android": {
+    "allowMixedContent": false
+  },
+  "plugins": {
+    "LocalNotifications": {
+      "smallIcon": "ic_stat_pomodoro",
+      "iconColor": "#e25555"
+    }
+  }
+}

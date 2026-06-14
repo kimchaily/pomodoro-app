@@ -1,0 +1,18 @@
+{
+  "name": "pomodoro-app",
+  "version": "1.0.0",
+  "description": "🍅 Pomodoro Fokus-Timer – PWA + Android-App mit Hintergrund-Alarm",
+  "private": true,
+  "scripts": {
+    "start": "python3 -m http.server 8080 --directory docs",
+    "sync": "cap sync android",
+    "open:android": "cap open android"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "@capacitor/android": "^8.4.0",
+    "@capacitor/cli": "^8.4.0",
+    "@capacitor/core": "^8.4.0",
+    "@capacitor/local-notifications": "^8.2.0"
+  }
+}
