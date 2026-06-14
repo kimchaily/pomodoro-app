@@ -25,7 +25,7 @@ const DEFAULT_SETTINGS = {
   autoStartBreaks: true, autoStartFocus: false,
   sound: "chime", volume: 70, tick: false,
   notify: true, vibrate: true,
-  wakeLock: false, theme: "auto",
+  wakeLock: false, alwaysOn: false, theme: "auto",
 };
 
 let settings = store.load("pomo.settings", DEFAULT_SETTINGS);
@@ -48,18 +48,70 @@ function modeDurationMs(mode) {
   return settings[mode === "focus" ? "focus" : mode === "short" ? "short" : "long"] * 60000;
 }
 
+/* Pro Modus gemerkter Lauf-/Restzustand. So setzt ein Tab-Wechsel den Timer
+   nicht zurück – jeder Modus behält seinen Stand, bis manuell zurückgesetzt wird. */
+const modeState = {
+  focus: { running: false, endAt: null, remainingMs: modeDurationMs("focus") },
+  short: { running: false, endAt: null, remainingMs: modeDurationMs("short") },
+  long: { running: false, endAt: null, remainingMs: modeDurationMs("long") },
+};
+
+function snapshotCurrentMode() {
+  modeState[timer.mode] = {
+    running: timer.running,
+    endAt: timer.endAt,
+    remainingMs: timer.remainingMs,
+  };
+}
+
 function saveTimer() {
-  store.save("pomo.timer", {
-    mode: timer.mode, running: timer.running,
-    endAt: timer.endAt, remainingMs: timer.remainingMs, cycle: timer.cycle,
-  });
+  snapshotCurrentMode();
+  store.save("pomo.timer", { mode: timer.mode, cycle: timer.cycle, modeState });
+}
+
+// Lädt den gemerkten Zustand eines Modus in den aktiven Timer (ohne Reset).
+function activateMode(mode) {
+  timer.mode = mode;
+  document.body.dataset.mode = mode;
+  clearInterval(intervalId);
+  const st = modeState[mode] || { running: false, endAt: null, remainingMs: modeDurationMs(mode) };
+  if (st.running && st.endAt) {
+    const left = st.endAt - Date.now();
+    if (left > 0) {
+      timer.running = true;
+      timer.endAt = st.endAt;
+      timer.remainingMs = left;
+      startInterval();
+      updateWakeLock();
+      scheduleNativeAlarm();
+      return;
+    }
+    // Während ein anderer Tab angezeigt wurde, ist die Einheit abgelaufen.
+    timer.running = false;
+    timer.endAt = null;
+    timer.remainingMs = 0;
+    completeSession({ silent: true });
+    return;
+  }
+  timer.running = false;
+  timer.endAt = null;
+  timer.remainingMs = st.remainingMs ?? modeDurationMs(mode);
+  updateWakeLock();
 }
 
 function restoreTimer() {
   const saved = store.loadRaw("pomo.timer", null);
   if (!saved) return;
-  timer.mode = saved.mode || "focus";
   timer.cycle = saved.cycle || 0;
+  if (saved.modeState) {
+    for (const m of Object.keys(modeState)) {
+      if (saved.modeState[m]) modeState[m] = saved.modeState[m];
+    }
+    activateMode(saved.mode || "focus");
+    return;
+  }
+  // Alt-Format (vor der Pro-Modus-Speicherung).
+  timer.mode = saved.mode || "focus";
   if (saved.running && saved.endAt) {
     const left = saved.endAt - Date.now();
     if (left > 0) {
@@ -100,6 +152,16 @@ function onInterval() {
   renderTimer();
 }
 
+// Sorgt dafür, dass immer nur ein Modus gleichzeitig läuft (ein nativer Alarm).
+function pauseOtherRunningModes() {
+  for (const m of Object.keys(modeState)) {
+    if (m !== timer.mode && modeState[m].running) {
+      const left = modeState[m].endAt ? Math.max(0, modeState[m].endAt - Date.now()) : modeState[m].remainingMs;
+      modeState[m] = { running: false, endAt: null, remainingMs: left };
+    }
+  }
+}
+
 function startPause() {
   ensureAudio();
   if (timer.running) {
@@ -107,14 +169,15 @@ function startPause() {
     timer.remainingMs = Math.max(0, timer.endAt - Date.now());
     timer.endAt = null;
     clearInterval(intervalId);
-    releaseWakeLock();
+    updateWakeLock();
     cancelNativeAlarm();
   } else {
     if (settings.notify) requestNotifyPermission();
+    pauseOtherRunningModes();
     timer.running = true;
     timer.endAt = Date.now() + timer.remainingMs;
     startInterval();
-    acquireWakeLock();
+    updateWakeLock();
     scheduleNativeAlarm();
   }
   saveTimer();
@@ -126,27 +189,37 @@ function resetTimer() {
   timer.endAt = null;
   timer.remainingMs = modeDurationMs(timer.mode);
   clearInterval(intervalId);
-  releaseWakeLock();
+  updateWakeLock();
   cancelNativeAlarm();
   saveTimer();
   renderTimer();
 }
 
-function switchMode(mode, { autoStart = false } = {}) {
+function switchMode(mode, { autoStart = false, preserve = false } = {}) {
+  // Tab-Wechsel: aktuellen Modus sichern und Zielmodus mit seinem Stand laden.
+  if (preserve) {
+    snapshotCurrentMode();
+    activateMode(mode);
+    saveTimer();
+    renderTimer();
+    return;
+  }
+  // Programmwechsel nach Ablauf/Überspringen: Zielmodus frisch starten.
   timer.mode = mode;
   timer.running = false;
   timer.endAt = null;
   timer.remainingMs = modeDurationMs(mode);
+  modeState[mode] = { running: false, endAt: null, remainingMs: timer.remainingMs };
   clearInterval(intervalId);
   document.body.dataset.mode = mode;
   if (autoStart) {
     timer.running = true;
     timer.endAt = Date.now() + timer.remainingMs;
     startInterval();
-    acquireWakeLock();
+    updateWakeLock();
     scheduleNativeAlarm();
   } else {
-    releaseWakeLock();
+    updateWakeLock();
     cancelNativeAlarm();
   }
   saveTimer();
@@ -477,9 +550,18 @@ async function notify(title, body) {
 
 let wakeLockSentinel = null;
 
+// "Display immer an" hält den Bildschirm dauerhaft wach, "Bildschirm wachhalten"
+// nur, solange der Timer läuft.
+function shouldKeepAwake() {
+  return settings.alwaysOn || (settings.wakeLock && timer.running);
+}
+
 async function acquireWakeLock() {
-  if (!settings.wakeLock || !("wakeLock" in navigator)) return;
-  try { wakeLockSentinel = await navigator.wakeLock.request("screen"); } catch { /* abgelehnt */ }
+  if (!("wakeLock" in navigator) || wakeLockSentinel) return;
+  try {
+    wakeLockSentinel = await navigator.wakeLock.request("screen");
+    wakeLockSentinel.addEventListener?.("release", () => { wakeLockSentinel = null; });
+  } catch { /* abgelehnt */ }
 }
 
 function releaseWakeLock() {
@@ -487,12 +569,16 @@ function releaseWakeLock() {
   wakeLockSentinel = null;
 }
 
+function updateWakeLock() {
+  if (shouldKeepAwake()) acquireWakeLock();
+  else releaseWakeLock();
+}
+
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "visible") {
-    if (timer.running) {
-      onInterval(); // sofort aufholen statt auf das Intervall zu warten
-      acquireWakeLock();
-    }
+    if (timer.running) onInterval(); // sofort aufholen statt auf das Intervall zu warten
+    // Das System gibt den Wake Lock beim Verstecken frei – hier neu anfordern.
+    updateWakeLock();
   }
 });
 
@@ -553,6 +639,7 @@ const settingBindings = [
   ["set-notify", "notify", "checkbox"],
   ["set-vibrate", "vibrate", "checkbox"],
   ["set-wakelock", "wakeLock", "checkbox"],
+  ["set-always-on", "alwaysOn", "checkbox"],
   ["set-theme", "theme", "select"],
 ];
 
@@ -582,9 +669,14 @@ function bindSettings() {
 
       if (key === "theme") applyTheme();
       if (key === "notify" && settings.notify) requestNotifyPermission();
-      if (key === "wakeLock") timer.running && settings.wakeLock ? acquireWakeLock() : releaseWakeLock();
-      if (!timer.running && key === timer.mode) {
-        timer.remainingMs = modeDurationMs(timer.mode);
+      if (key === "wakeLock" || key === "alwaysOn") updateWakeLock();
+      // Geänderte Dauer auf den passenden, nicht laufenden Modus übertragen.
+      if (key === "focus" || key === "short" || key === "long") {
+        if (key === timer.mode && !timer.running) {
+          timer.remainingMs = modeDurationMs(timer.mode);
+        } else if (key !== timer.mode && !modeState[key].running) {
+          modeState[key] = { running: false, endAt: null, remainingMs: modeDurationMs(key) };
+        }
         saveTimer();
       }
       renderTimer();
@@ -610,7 +702,7 @@ function bindUI() {
 
   document.querySelectorAll(".mode-tab").forEach((tab) => {
     tab.addEventListener("click", () => {
-      if (tab.dataset.mode !== timer.mode) switchMode(tab.dataset.mode);
+      if (tab.dataset.mode !== timer.mode) switchMode(tab.dataset.mode, { preserve: true });
     });
   });
 
@@ -706,5 +798,6 @@ loadSettingsUI();
 bindSettings();
 bindUI();
 restoreTimer();
+updateWakeLock();
 renderTimer();
 renderTasks();
