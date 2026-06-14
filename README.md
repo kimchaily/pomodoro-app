@@ -17,8 +17,10 @@ Pomodoro-App als **PWA** (im Browser installierbar) und als **Android-App**
   7-Tage-Diagramm, Fokusminuten
 - **Signale**: Benachrichtigungen, Vibration, 3 Klangthemen mit Lautstärke,
   optionales Ticken
-- **Komfort**: Bildschirm-Wachhalten, Hell/Dunkel/Auto-Design, Tastenkürzel
-  (Leertaste/R/S)
+- **Komfort**: Bildschirm-Wachhalten (während des Timers) oder „Display immer
+  an", Hell/Dunkel/Auto-Design, Tastenkürzel (Leertaste/R/S). Ein Tab-Wechsel
+  setzt den laufenden Timer nicht zurück – das geschieht nur über die
+  Zurücksetzen-Taste.
 - **Offline**: Alle Daten bleiben lokal auf dem Gerät
 
 ## Android-APK bekommen
