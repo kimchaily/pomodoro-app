@@ -37,18 +37,38 @@ diese wird für den Hintergrund-Alarm benötigt.
 
 ## Als PWA nutzen (Alternative ohne APK)
 
-1. **Settings → Pages**: Branch `main`, Ordner `/docs` auswählen.
-2. Pages-URL in Chrome öffnen → Menü (⋮) → **„App installieren“**.
+Die PWA wird automatisch auf GitHub Pages veröffentlicht
+(<https://kimchaily.github.io/pomodoro-app/>). Pages-URL in Chrome öffnen →
+Menü (⋮) → **„App installieren“**.
 
 Hinweis: Als PWA klingelt der Alarm nur zuverlässig, solange die App im
 Vordergrund läuft – für Hintergrund-Alarme die Android-APK verwenden.
+
+### Deployment & PR-Vorschau
+
+Der Workflow `.github/workflows/pages.yml` veröffentlicht alles in den Branch
+`gh-pages`, damit Produktion und PR-Vorschauen nebeneinander liegen:
+
+| Auslöser | URL |
+| --- | --- |
+| Push auf `main` | `…/pomodoro-app/` (Produktion) |
+| Offener Pull Request | `…/pomodoro-app/preview/<branch>/` (Vorschau) |
+| PR geschlossen/gemergt | Vorschau wird automatisch entfernt |
+
+Bei jedem PR postet der Workflow den Vorschau-Link als Kommentar. So lässt sich
+jeder Branch live testen, bevor er nach `main` gemergt wird.
+
+**Einmalige Einrichtung** (nach dem ersten Merge dieses Workflows nach `main`):
+**Settings → Pages → Source** auf **„Deploy from a branch“**, Branch
+**`gh-pages`**, Ordner **`/ (root)`** umstellen.
 
 ## Projektstruktur
 
 ```
 docs/        Web-App (PWA) – wird auch als WebView-Inhalt der Android-App genutzt
 android/     Generiertes Capacitor-Android-Projekt
-.github/     CI-Workflow, der die APK baut
+tests/       End-to-End-UI-Tests (Playwright)
+.github/     CI-Workflows: APK-Build und GitHub-Pages-Deployment
 ```
 
 ## Lokal entwickeln
