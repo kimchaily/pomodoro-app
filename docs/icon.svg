@@ -1,9 +1,37 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="100" fill="#e25555"/>
-  <circle cx="256" cy="276" r="150" fill="none" stroke="#ffffff" stroke-width="26"/>
-  <line x1="256" y1="276" x2="256" y2="186" stroke="#ffffff" stroke-width="22" stroke-linecap="round"/>
-  <line x1="256" y1="276" x2="320" y2="312" stroke="#ffffff" stroke-width="22" stroke-linecap="round"/>
-  <rect x="226" y="78" width="60" height="34" rx="14" fill="#ffffff"/>
-  <path d="M256 96 C 236 60, 200 56, 182 70 C 208 76, 226 90, 236 104 Z" fill="#3d9970"/>
-  <path d="M256 96 C 276 60, 312 56, 330 70 C 304 76, 286 90, 276 104 Z" fill="#3d9970"/>
+  <defs>
+    <radialGradient id="tomato" cx="40%" cy="36%" r="72%">
+      <stop offset="0%" stop-color="#ff6f5e"/>
+      <stop offset="55%" stop-color="#e63e3e"/>
+      <stop offset="100%" stop-color="#c62828"/>
+    </radialGradient>
+    <linearGradient id="leaf" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#5bbd7d"/>
+      <stop offset="100%" stop-color="#2f8f57"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="512" height="512" rx="112" fill="#f7f3ef"/>
+
+  <!-- Tomato body -->
+  <path fill="url(#tomato)" d="M256 168
+    c92 0 160 62 160 152
+    c0 84-72 148-160 148
+    S96 404 96 320
+    c0-90 68-152 160-152 Z"/>
+
+  <!-- Soft highlight -->
+  <ellipse cx="196" cy="270" rx="52" ry="38" fill="#ffffff" opacity="0.28"/>
+
+  <!-- Leaves / calyx -->
+  <g fill="url(#leaf)">
+    <path d="M256 196 C244 150 208 128 168 128 c18 40 40 60 88 68 Z"/>
+    <path d="M256 196 C268 150 304 128 344 128 c-18 40-40 60-88 68 Z"/>
+    <path d="M256 200 C236 166 196 158 168 168 c30 26 52 34 88 32 Z"/>
+    <path d="M256 200 C276 166 316 158 344 168 c-30 26-52 34-88 32 Z"/>
+    <path d="M256 204 C246 168 256 132 256 120 c14 22 16 58 0 84 Z"/>
+  </g>
+
+  <!-- Stem -->
+  <rect x="242" y="104" width="28" height="46" rx="14" fill="#2f8f57"/>
 </svg>
