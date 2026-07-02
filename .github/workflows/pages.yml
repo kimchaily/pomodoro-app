@@ -1,0 +1,160 @@
+name: GitHub Pages – Produktion & PR-Vorschau
+
+# Veröffentlicht die PWA aus docs/ auf GitHub Pages:
+#   • Push auf main            → Produktion unter  /pomodoro-app/
+#   • Pull Request (offen)     → Vorschau unter    /pomodoro-app/preview/<branch>/
+#   • Pull Request geschlossen → Vorschau wird wieder entfernt
+#
+# Alles landet im Branch gh-pages; die Produktion und die einzelnen
+# Vorschauen liegen dort nebeneinander, sodass sie sich nicht überschreiben.
+#
+# Einmalige Einrichtung (Repo-Einstellungen):
+#   Settings → Pages → Source: "Deploy from a branch" → Branch: gh-pages, Ordner: / (root)
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    types: [opened, reopened, synchronize, closed]
+  workflow_dispatch:
+
+# Deploys nacheinander ausführen, damit parallele Läufe den gh-pages-Branch
+# nicht gegenseitig überschreiben.
+concurrency:
+  group: pages-deploy
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Quellcode auschecken
+        uses: actions/checkout@v4
+
+      - name: Ziel bestimmen
+        id: target
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            # Branch-Name in einen URL-tauglichen Slug umwandeln.
+            slug=$(printf '%s' "${{ github.head_ref }}" \
+              | tr '[:upper:]' '[:lower:]' \
+              | sed -e 's#[^a-z0-9]#-#g' -e 's#-\+#-#g' -e 's#^-##' -e 's#-$##')
+            echo "slug=$slug" >> "$GITHUB_OUTPUT"
+            echo "dir=preview/$slug" >> "$GITHUB_OUTPUT"
+            if [ "${{ github.event.action }}" = "closed" ]; then
+              echo "mode=remove" >> "$GITHUB_OUTPUT"
+            else
+              echo "mode=preview" >> "$GITHUB_OUTPUT"
+            fi
+          else
+            echo "mode=production" >> "$GITHUB_OUTPUT"
+            echo "dir=." >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Auf gh-pages veröffentlichen
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MODE: ${{ steps.target.outputs.mode }}
+          DIR: ${{ steps.target.outputs.dir }}
+          SLUG: ${{ steps.target.outputs.slug }}
+          BRANCH: ${{ github.head_ref }}
+          PR: ${{ github.event.number }}
+        run: |
+          set -euo pipefail
+          SRC="$PWD/docs"
+
+          git config --global user.name  "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+          REMOTE="https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          tmp="$(mktemp -d)"
+
+          # gh-pages klonen; falls der Branch noch nicht existiert, leer anlegen.
+          if git clone --quiet --branch gh-pages --single-branch "$REMOTE" "$tmp" 2>/dev/null; then
+            cd "$tmp"
+          else
+            git clone --quiet "$REMOTE" "$tmp"
+            cd "$tmp"
+            git checkout --orphan gh-pages
+            git rm -rf --quiet . 2>/dev/null || true
+          fi
+
+          # Root (Produktion) leeren, den preview/-Baum dabei erhalten.
+          clear_root() {
+            find . -maxdepth 1 -mindepth 1 \
+              ! -name '.git' ! -name 'preview' ! -name '.nojekyll' -exec rm -rf {} +
+          }
+
+          # Root am ECHTEN main-Stand ausrichten (nicht am PR!). So sind
+          # Produktion und Vorschau nie identisch – auch bevor der erste
+          # push-auf-main lief. Gibt 1 zurück, falls main nicht erreichbar ist.
+          sync_root_from_main() {
+            git -C "$GITHUB_WORKSPACE" fetch --quiet --depth=1 origin main 2>/dev/null || return 1
+            clear_root
+            git -C "$GITHUB_WORKSPACE" archive origin/main docs | tar -x --strip-components=1
+          }
+
+          case "$MODE" in
+            production)
+              # Push auf main: Root direkt aus der ausgecheckten Quelle (= main).
+              clear_root
+              cp -R "$SRC"/. .
+              ;;
+            preview)
+              rm -rf "$DIR"
+              mkdir -p "$DIR"
+              cp -R "$SRC"/. "$DIR"/
+              # Metadaten für das Portal ablegen (Branch, PR, Zeit, Commit).
+              python3 "$GITHUB_WORKSPACE/scripts/write_meta.py" \
+                --dir "$DIR" --slug "$SLUG" --branch "$BRANCH" \
+                --pr "$PR" --sha "${GITHUB_SHA::7}"
+              sync_root_from_main || true
+              ;;
+            remove)
+              rm -rf "$DIR"
+              sync_root_from_main || true
+              ;;
+          esac
+
+          # Sicherheitsnetz: falls die Produktion noch komplett fehlt (z. B. main
+          # nicht erreichbar), wenigstens aus der aktuellen Quelle vorbelegen.
+          if [ ! -f index.html ]; then
+            cp -R "$SRC"/. .
+          fi
+
+          # Portal (preview/index.html) mit Links zu Produktion + Vorschauen
+          # aus dem aktuellen Stand von gh-pages neu erzeugen.
+          python3 "$GITHUB_WORKSPACE/scripts/gen_portal.py" --repo "$GITHUB_REPOSITORY" --root .
+
+          # GitHub Pages darf die Dateien nicht durch Jekyll filtern.
+          touch .nojekyll
+
+          git add -A
+          if git diff --cached --quiet; then
+            echo "Keine Änderungen zu veröffentlichen."
+            exit 0
+          fi
+          git commit --quiet -m "Deploy ${MODE}: ${DIR} (${GITHUB_SHA::7})"
+          git push --quiet origin gh-pages
+
+      - name: Vorschau-Link am PR kommentieren
+        if: >
+          steps.target.outputs.mode == 'preview' &&
+          (github.event.action == 'opened' || github.event.action == 'reopened')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          base="https://${GITHUB_REPOSITORY_OWNER}.github.io/${GITHUB_REPOSITORY#*/}"
+          url="${base}/preview/${{ steps.target.outputs.slug }}/"
+          gh pr comment "${{ github.event.number }}" --body \
+            "🍅 **PWA-Vorschau:** ${url}
+
+          Alle Deploys im Überblick: [Deploy-Portal](${base}/preview/)
+
+          Aktualisiert sich bei jedem Push auf diesen Branch (Live nach ~1 Min.). Tipp: im Inkognito-Fenster öffnen, damit kein alter Service-Worker aus der Produktion dazwischenfunkt."

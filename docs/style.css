@@ -115,7 +115,19 @@ main { max-width: 480px; margin: 0 auto; padding: 0 16px 40px; }
 .time { font-size: clamp(3rem, 16vw, 4.2rem); font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: 1px; }
 .session-label { color: var(--muted); font-size: .9rem; }
 
-.cycle-dots { display: flex; gap: 7px; margin-top: 6px; }
+.cycle-dots {
+  display: flex;
+  gap: 7px;
+  margin-top: 6px;
+  border: none;
+  background: none;
+  padding: 6px;
+  border-radius: 12px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background .2s, transform .1s;
+}
+.cycle-dots:active { transform: scale(.9); background: var(--accent-soft); }
 .cycle-dots span {
   width: 10px; height: 10px;
   border-radius: 50%;
@@ -169,7 +181,39 @@ main { max-width: 480px; margin: 0 auto; padding: 0 16px 40px; }
 
 .task-form { display: flex; gap: 8px; margin-bottom: 12px; }
 .task-form input[type="text"] { flex: 1; min-width: 0; }
-.task-form input[type="number"] { width: 58px; text-align: center; }
+
+/* Zahlenfeld mit − / + zum Erhöhen/Verringern */
+.stepper { display: flex; align-items: stretch; flex-shrink: 0; }
+.stepper input[type="number"] {
+  width: 42px;
+  text-align: center;
+  border-radius: 0;
+  border-left: none;
+  border-right: none;
+  padding-left: 2px;
+  padding-right: 2px;
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+.stepper input[type="number"]::-webkit-inner-spin-button,
+.stepper input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+.step-btn {
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--ring-track);
+  width: 38px;
+  font-size: 1.3rem;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.step-btn:active { background: var(--accent-soft); }
+.step-btn:first-child { border-radius: 10px 0 0 10px; }
+.step-btn:last-child { border-radius: 0 10px 10px 0; }
 input[type="text"], input[type="number"], select {
   background: var(--bg);
   color: var(--text);

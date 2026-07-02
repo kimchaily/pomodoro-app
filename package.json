@@ -6,7 +6,8 @@
   "scripts": {
     "start": "python3 -m http.server 8080 --directory docs",
     "sync": "cap sync android",
-    "open:android": "cap open android"
+    "open:android": "cap open android",
+    "test": "node tests/ui.test.mjs"
   },
   "license": "MIT",
   "dependencies": {
@@ -14,5 +15,8 @@
     "@capacitor/cli": "^8.4.0",
     "@capacitor/core": "^8.4.0",
     "@capacitor/local-notifications": "^8.2.0"
+  },
+  "devDependencies": {
+    "playwright": "^1.56.0"
   }
 }

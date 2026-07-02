@@ -38,7 +38,7 @@
         <div class="ring-center">
           <div class="time" id="time-display">25:00</div>
           <div class="session-label" id="session-label">Bereit für Fokus</div>
-          <div class="cycle-dots" id="cycle-dots" title="Pomodoros bis zur langen Pause"></div>
+          <button type="button" class="cycle-dots" id="cycle-dots" title="Pomodoro-Zähler – tippen zum Zurücksetzen" aria-label="Pomodoro-Zähler zurücksetzen"></button>
         </div>
       </div>
 
@@ -58,7 +58,11 @@
       <h2>Aufgaben</h2>
       <form id="task-form" class="task-form" autocomplete="off">
         <input type="text" id="task-input" placeholder="Woran arbeitest du?" maxlength="120" required>
-        <input type="number" id="task-est" min="1" max="20" value="1" title="Geschätzte Pomodoros">
+        <div class="stepper" title="Geschätzte Pomodoros">
+          <button type="button" class="step-btn" id="est-dec" aria-label="Weniger Pomodoros">−</button>
+          <input type="number" id="task-est" min="1" max="20" value="1" inputmode="numeric" aria-label="Geschätzte Pomodoros">
+          <button type="button" class="step-btn" id="est-inc" aria-label="Mehr Pomodoros">+</button>
+        </div>
         <button type="submit" class="add-btn" title="Aufgabe hinzufügen">+</button>
       </form>
       <ul id="task-list" class="task-list"></ul>
