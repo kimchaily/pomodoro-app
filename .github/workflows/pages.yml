@@ -61,6 +61,9 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           MODE: ${{ steps.target.outputs.mode }}
           DIR: ${{ steps.target.outputs.dir }}
+          SLUG: ${{ steps.target.outputs.slug }}
+          BRANCH: ${{ github.head_ref }}
+          PR: ${{ github.event.number }}
         run: |
           set -euo pipefail
           SRC="$PWD/docs"
@@ -92,6 +95,10 @@ jobs:
               rm -rf "$DIR"
               mkdir -p "$DIR"
               cp -R "$SRC"/. "$DIR"/
+              # Metadaten für das Portal ablegen (Branch, PR, Zeit, Commit).
+              python3 "$GITHUB_WORKSPACE/scripts/write_meta.py" \
+                --dir "$DIR" --slug "$SLUG" --branch "$BRANCH" \
+                --pr "$PR" --sha "${GITHUB_SHA::7}"
               ;;
             remove)
               rm -rf "$DIR"
@@ -105,6 +112,10 @@ jobs:
           if [ ! -f index.html ]; then
             cp -R "$SRC"/. .
           fi
+
+          # Portal (preview/index.html) mit Links zu Produktion + Vorschauen
+          # aus dem aktuellen Stand von gh-pages neu erzeugen.
+          python3 "$GITHUB_WORKSPACE/scripts/gen_portal.py" --repo "$GITHUB_REPOSITORY" --root .
 
           # GitHub Pages darf die Dateien nicht durch Jekyll filtern.
           touch .nojekyll
@@ -125,8 +136,11 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          url="https://${GITHUB_REPOSITORY_OWNER}.github.io/${GITHUB_REPOSITORY#*/}/preview/${{ steps.target.outputs.slug }}/"
+          base="https://${GITHUB_REPOSITORY_OWNER}.github.io/${GITHUB_REPOSITORY#*/}"
+          url="${base}/preview/${{ steps.target.outputs.slug }}/"
           gh pr comment "${{ github.event.number }}" --body \
             "🍅 **PWA-Vorschau:** ${url}
+
+          Alle Deploys im Überblick: [Deploy-Portal](${base}/preview/)
 
           Aktualisiert sich bei jedem Push auf diesen Branch (Live nach ~1 Min.). Tipp: im Inkognito-Fenster öffnen, damit kein alter Service-Worker aus der Produktion dazwischenfunkt."

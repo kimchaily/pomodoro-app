@@ -58,6 +58,11 @@ Der Workflow `.github/workflows/pages.yml` veröffentlicht alles in den Branch
 Bei jedem PR postet der Workflow den Vorschau-Link als Kommentar. So lässt sich
 jeder Branch live testen, bevor er nach `main` gemergt wird.
 
+**Deploy-Portal:** <https://kimchaily.github.io/pomodoro-app/preview/> listet
+Produktion und alle offenen PR-Vorschauen mit Links auf – so muss kein
+Branch-Name von Hand eingegeben werden. Die Seite wird bei jedem Deploy neu
+erzeugt (`scripts/gen_portal.py`).
+
 **Einmalige Einrichtung** (nach dem ersten Merge dieses Workflows nach `main`):
 **Settings → Pages → Source** auf **„Deploy from a branch“**, Branch
 **`gh-pages`**, Ordner **`/ (root)`** umstellen.
@@ -68,6 +73,7 @@ jeder Branch live testen, bevor er nach `main` gemergt wird.
 docs/        Web-App (PWA) – wird auch als WebView-Inhalt der Android-App genutzt
 android/     Generiertes Capacitor-Android-Projekt
 tests/       End-to-End-UI-Tests (Playwright)
+scripts/     Hilfsskripte für das Pages-Deployment (Portal, Metadaten)
 .github/     CI-Workflows: APK-Build und GitHub-Pages-Deployment
 ```
 
