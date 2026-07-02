@@ -98,6 +98,14 @@ jobs:
               ;;
           esac
 
+          # Falls die Produktion (Root) noch nie veröffentlicht wurde, aus der
+          # aktuellen Quelle vorbelegen – so ist die Seite sofort nach dem
+          # Umstellen der Pages-Quelle erreichbar, auch ohne vorherigen
+          # main-Deploy.
+          if [ ! -f index.html ]; then
+            cp -R "$SRC"/. .
+          fi
+
           # GitHub Pages darf die Dateien nicht durch Jekyll filtern.
           touch .nojekyll
 
