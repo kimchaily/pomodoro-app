@@ -84,11 +84,25 @@ jobs:
             git rm -rf --quiet . 2>/dev/null || true
           fi
 
+          # Root (Produktion) leeren, den preview/-Baum dabei erhalten.
+          clear_root() {
+            find . -maxdepth 1 -mindepth 1 \
+              ! -name '.git' ! -name 'preview' ! -name '.nojekyll' -exec rm -rf {} +
+          }
+
+          # Root am ECHTEN main-Stand ausrichten (nicht am PR!). So sind
+          # Produktion und Vorschau nie identisch – auch bevor der erste
+          # push-auf-main lief. Gibt 1 zurück, falls main nicht erreichbar ist.
+          sync_root_from_main() {
+            git -C "$GITHUB_WORKSPACE" fetch --quiet --depth=1 origin main 2>/dev/null || return 1
+            clear_root
+            git -C "$GITHUB_WORKSPACE" archive origin/main docs | tar -x --strip-components=1
+          }
+
           case "$MODE" in
             production)
-              # Root neu befüllen, den preview/-Baum dabei erhalten.
-              find . -maxdepth 1 -mindepth 1 \
-                ! -name '.git' ! -name 'preview' ! -name '.nojekyll' -exec rm -rf {} +
+              # Push auf main: Root direkt aus der ausgecheckten Quelle (= main).
+              clear_root
               cp -R "$SRC"/. .
               ;;
             preview)
@@ -99,16 +113,16 @@ jobs:
               python3 "$GITHUB_WORKSPACE/scripts/write_meta.py" \
                 --dir "$DIR" --slug "$SLUG" --branch "$BRANCH" \
                 --pr "$PR" --sha "${GITHUB_SHA::7}"
+              sync_root_from_main || true
               ;;
             remove)
               rm -rf "$DIR"
+              sync_root_from_main || true
               ;;
           esac
 
-          # Falls die Produktion (Root) noch nie veröffentlicht wurde, aus der
-          # aktuellen Quelle vorbelegen – so ist die Seite sofort nach dem
-          # Umstellen der Pages-Quelle erreichbar, auch ohne vorherigen
-          # main-Deploy.
+          # Sicherheitsnetz: falls die Produktion noch komplett fehlt (z. B. main
+          # nicht erreichbar), wenigstens aus der aktuellen Quelle vorbelegen.
           if [ ! -f index.html ]; then
             cp -R "$SRC"/. .
           fi
