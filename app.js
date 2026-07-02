@@ -195,6 +195,15 @@ function resetTimer() {
   renderTimer();
 }
 
+// Setzt den Pomodoro-Zähler des aktuellen Zyklus zurück (Fortschritt zur
+// langen Pause). Der laufende Timer und die Statistik bleiben unberührt.
+function resetCycle() {
+  if (timer.cycle === 0) return;
+  timer.cycle = 0;
+  saveTimer();
+  renderTimer();
+}
+
 function switchMode(mode, { autoStart = false, preserve = false } = {}) {
   // Tab-Wechsel: aktuellen Modus sichern und Zielmodus mit seinem Stand laden.
   if (preserve) {
@@ -699,6 +708,7 @@ function bindUI() {
   document.getElementById("btn-start").addEventListener("click", startPause);
   document.getElementById("btn-reset").addEventListener("click", resetTimer);
   document.getElementById("btn-skip").addEventListener("click", skipSession);
+  document.getElementById("cycle-dots").addEventListener("click", resetCycle);
 
   document.querySelectorAll(".mode-tab").forEach((tab) => {
     tab.addEventListener("click", () => {
@@ -729,7 +739,16 @@ function bindUI() {
     }
   });
 
-  // Aufgaben
+  // Aufgaben – Schätzung per − / + statt manueller Eingabe anpassen
+  const est = document.getElementById("task-est");
+  const stepEst = (delta) => {
+    const min = Number(est.min), max = Number(est.max);
+    const current = Math.round(Number(est.value) || min);
+    est.value = Math.min(max, Math.max(min, current + delta));
+  };
+  document.getElementById("est-dec").addEventListener("click", () => stepEst(-1));
+  document.getElementById("est-inc").addEventListener("click", () => stepEst(1));
+
   document.getElementById("task-form").addEventListener("submit", (e) => {
     e.preventDefault();
     const input = document.getElementById("task-input");
