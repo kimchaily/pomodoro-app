@@ -7,7 +7,7 @@
     "start": "python3 -m http.server 8080 --directory docs",
     "sync": "cap sync android",
     "open:android": "cap open android",
-    "test": "node tests/ui.test.mjs"
+    "test": "node tests/ui.test.mjs && node tests/update.test.mjs"
   },
   "license": "MIT",
   "dependencies": {

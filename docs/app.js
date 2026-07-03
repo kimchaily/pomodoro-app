@@ -533,6 +533,120 @@ async function cancelNativeAlarm() {
   try { await plugin.cancel({ notifications: [{ id: NATIVE_ALARM_ID }] }); } catch { /* ignorieren */ }
 }
 
+/* ============================== In-App-Update (Android-App) ==============================
+   Vergleicht den in die APK eingebackenen Build-Commit (version.json, vom CI
+   erzeugt) mit dem Commit des "latest"-GitHub-Releases. Bei einer neueren
+   Version lädt der native ApkUpdater die APK und öffnet den System-Installer. */
+
+const UPDATE_RELEASE_API = "https://api.github.com/repos/kimchaily/pomodoro-app/releases/tags/latest";
+
+function apkUpdater() {
+  const cap = window.Capacitor;
+  return cap?.isNativePlatform?.() ? cap.Plugins?.ApkUpdater : null;
+}
+
+let installedBuild = null;   // { sha, builtAt } oder null (z. B. lokaler Dev-Build)
+let availableUpdate = null;  // { sha, url, name }
+
+async function loadInstalledBuild() {
+  try {
+    const res = await fetch(`version.json?t=${Date.now()}`, { cache: "no-store" });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch { return null; }
+}
+
+async function fetchLatestRelease() {
+  const res = await fetch(UPDATE_RELEASE_API, {
+    headers: { Accept: "application/vnd.github+json" },
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error(`GitHub API antwortet mit ${res.status}`);
+  const rel = await res.json();
+  const apk = (rel.assets || []).find((a) => a.name === "pomodoro.apk");
+  // Der Release-Body wird vom CI erzeugt und enthält den Commit-Link.
+  const sha = /\/commit\/([0-9a-f]{40})/.exec(rel.body || "")?.[1] || null;
+  return { sha, url: apk?.browser_download_url || null, name: rel.name || "" };
+}
+
+function fmtBuild(build) {
+  if (!build?.sha) return "unbekannt";
+  const short = build.sha.slice(0, 7);
+  if (!build.builtAt) return short;
+  const d = new Date(build.builtAt);
+  return `${short} vom ${d.toLocaleDateString("de-DE")} ${d.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })}`;
+}
+
+function setUpdateStatus(text) {
+  document.getElementById("update-status").textContent = text;
+}
+
+async function checkForUpdate() {
+  const installBtn = document.getElementById("btn-install-update");
+  installBtn.hidden = true;
+  availableUpdate = null;
+  setUpdateStatus("Prüfe …");
+  try {
+    const latest = await fetchLatestRelease();
+    if (!latest.url) {
+      setUpdateStatus("Kein APK-Release gefunden.");
+      return;
+    }
+    if (latest.sha && installedBuild?.sha && latest.sha === installedBuild.sha) {
+      setUpdateStatus("✓ App ist aktuell.");
+      return;
+    }
+    availableUpdate = latest;
+    setUpdateStatus(installedBuild?.sha
+      ? `Update verfügbar: ${latest.name || latest.sha?.slice(0, 7) || "neuer Build"}`
+      : "Installierte Version unbekannt – neuester Build kann geladen werden.");
+    installBtn.hidden = false;
+  } catch (e) {
+    setUpdateStatus(`Prüfung fehlgeschlagen: ${e.message}`);
+  }
+}
+
+async function installUpdate() {
+  const updater = apkUpdater();
+  if (!updater || !availableUpdate?.url) return;
+  const installBtn = document.getElementById("btn-install-update");
+  try {
+    const { allowed } = await updater.canInstall();
+    if (!allowed) {
+      setUpdateStatus("Bitte „Unbekannte Apps installieren“ für Pomodoro erlauben und danach erneut tippen.");
+      await updater.openInstallSettings();
+      return;
+    }
+    installBtn.disabled = true;
+    setUpdateStatus("Download läuft – der Installer öffnet sich gleich …");
+    await updater.downloadAndInstall({ url: availableUpdate.url });
+  } catch (e) {
+    installBtn.disabled = false;
+    setUpdateStatus(`Update fehlgeschlagen: ${e.message || e}`);
+  }
+}
+
+async function initUpdateUI() {
+  const updater = apkUpdater();
+  if (!updater) return; // Im Browser/PWA aktualisiert der Service Worker die App.
+  document.getElementById("update-section").hidden = false;
+
+  installedBuild = await loadInstalledBuild();
+  document.getElementById("update-installed").textContent = fmtBuild(installedBuild);
+
+  document.getElementById("btn-check-update").addEventListener("click", checkForUpdate);
+  document.getElementById("btn-install-update").addEventListener("click", installUpdate);
+
+  updater.addListener?.("installStarted", () => {
+    setUpdateStatus("Installer geöffnet – Installation dort bestätigen.");
+    document.getElementById("btn-install-update").disabled = false;
+  });
+  updater.addListener?.("downloadFailed", (e) => {
+    setUpdateStatus(`Download fehlgeschlagen: ${e?.message || "unbekannter Fehler"}`);
+    document.getElementById("btn-install-update").disabled = false;
+  });
+}
+
 /* ============================== Benachrichtigungen ============================== */
 
 function requestNotifyPermission() {
@@ -820,3 +934,4 @@ restoreTimer();
 updateWakeLock();
 renderTimer();
 renderTasks();
+initUpdateUI();

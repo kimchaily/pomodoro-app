@@ -24,6 +24,10 @@ jobs:
           # Nur Produktionsabhängigkeiten (Capacitor) – die Test-Dev-Abhängigkeit
           # Playwright wird hier nicht gebraucht und würde sonst einen Browser laden.
           npm ci --omit=dev
+          # Build-Identität in die APK einbacken – die In-App-Updateprüfung
+          # vergleicht diesen Commit mit dem des "latest"-Releases.
+          printf '{"sha":"%s","builtAt":"%s"}\n' \
+            "$GITHUB_SHA" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > docs/version.json
           npx cap sync android
 
       - uses: actions/setup-java@v4
