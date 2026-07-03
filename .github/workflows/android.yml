@@ -44,14 +44,28 @@ jobs:
           name: pomodoro-apk
           path: pomodoro.apk
 
+      - name: Build-Metadaten für den Release ermitteln
+        if: github.ref == 'refs/heads/main'
+        id: meta
+        run: |
+          echo "date=$(date -u '+%d.%m.%Y %H:%M UTC')" >> "$GITHUB_OUTPUT"
+          echo "sha=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+          echo "subject=$(git log -1 --pretty=%s)" >> "$GITHUB_OUTPUT"
+
+      # Name und Beschreibung werden bei jedem Build mit Datum und Commit
+      # aktualisiert, damit sofort erkennbar ist, wie aktuell die APK ist.
+      # Kein Pre-Release, damit GitHub den Build als „Latest“ hervorhebt.
       - name: APK im "latest"-Release veröffentlichen
         if: github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: latest
-          name: Pomodoro – aktueller Build
+          name: Pomodoro – Build vom ${{ steps.meta.outputs.date }}
           body: |
             Automatisch gebaute Debug-APK. Auf dem Android-Smartphone herunterladen,
             öffnen und installieren („Unbekannte Quellen“ einmalig erlauben).
-          prerelease: true
+
+            **Build:** ${{ steps.meta.outputs.date }}
+            **Commit:** [`${{ steps.meta.outputs.sha }}`](https://github.com/${{ github.repository }}/commit/${{ github.sha }}) – ${{ steps.meta.outputs.subject }}
+          prerelease: false
           files: pomodoro.apk
