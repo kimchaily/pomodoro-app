@@ -11,6 +11,10 @@ Pomodoro-App als **PWA** (im Browser installierbar) und als **Android-App**
 - **Hintergrund-Alarm (Android-App)**: Das Ende der Einheit wird als exakter
   System-Alarm vorgemerkt – klingelt auch bei ausgeschaltetem Bildschirm oder
   geschlossener App
+- **In-App-Update (Android-App)**: Einstellungen → App-Update prüft gegen das
+  `latest`-GitHub-Release (Commit-Vergleich), lädt die neue APK direkt herunter
+  und öffnet den System-Installer. Der CI-Build backt dafür `version.json` mit
+  Commit und Build-Zeit in die APK ein.
 - **Aufgaben**: Liste mit geschätzten Pomodoros, aktive Aufgabe wird
   automatisch hochgezählt
 - **Statistik**: Heute / Woche / Gesamt, Tagesserie (Streak),

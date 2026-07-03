@@ -1,6 +1,6 @@
 "use strict";
 
-const CACHE_NAME = "pomodoro-v4";
+const CACHE_NAME = "pomodoro-v5";
 const ASSETS = [
   "./",
   "./index.html",

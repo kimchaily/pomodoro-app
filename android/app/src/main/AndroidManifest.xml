@@ -45,4 +45,6 @@
          Nutzer-Dialog gewährt (Android 13+). -->
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" android:maxSdkVersion="32" />
     <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+    <!-- Erlaubt der App, den System-Installer für heruntergeladene Updates zu öffnen. -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 </manifest>

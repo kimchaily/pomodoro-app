@@ -1,1 +1,4 @@
 node_modules/
+
+# Wird nur im CI-Build erzeugt (Build-Identität für die In-App-Updateprüfung)
+docs/version.json
