@@ -259,6 +259,23 @@ input[type="text"], input[type="number"], select {
 .muted { color: var(--muted); font-size: .85rem; }
 .hint { margin-top: 18px; }
 
+.update-btn {
+  display: block;
+  width: 100%;
+  margin-top: 8px;
+  padding: 12px;
+  border: none;
+  border-radius: 12px;
+  background: var(--accent);
+  color: #fff;
+  font-size: .95rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.update-btn:active { transform: scale(.98); }
+.update-btn[disabled] { opacity: .6; cursor: default; }
+.update-btn[hidden] { display: none; }
+
 .text-btn {
   background: none;
   border: none;
