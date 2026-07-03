@@ -21,7 +21,9 @@ jobs:
 
       - name: Web-Assets in das Android-Projekt synchronisieren
         run: |
-          npm ci
+          # Nur Produktionsabhängigkeiten (Capacitor) – die Test-Dev-Abhängigkeit
+          # Playwright wird hier nicht gebraucht und würde sonst einen Browser laden.
+          npm ci --omit=dev
           npx cap sync android
 
       - uses: actions/setup-java@v4
