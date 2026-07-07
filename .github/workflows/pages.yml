@@ -127,6 +127,43 @@ jobs:
             cp -R "$SRC"/. .
           fi
 
+          # Selbstheilung: verwaiste Vorschauen entfernen.
+          # Unabhängig von einzelnen close-Events wird bei JEDEM Deploy der
+          # Bestand an preview/*-Ordnern gegen die tatsächlich offenen PRs
+          # abgeglichen. So verschwinden hängengebliebene Vorschauen (etwa bei
+          # mehrfach wiederverwendeten Branchnamen oder verpassten close-Events)
+          # spätestens beim nächsten Deploy von selbst.
+          slugify() {
+            printf '%s' "$1" | tr '[:upper:]' '[:lower:]' \
+              | sed -e 's#[^a-z0-9]#-#g' -e 's#-\+#-#g' -e 's#^-##' -e 's#-$##'
+          }
+          prune_stale_previews() {
+            [ -d preview ] || return 0
+            local open_json
+            # Bei Fehler (z. B. Rate-Limit) NICHT auf gut Glück löschen.
+            if ! open_json=$(gh pr list --repo "$GITHUB_REPOSITORY" \
+                              --state open --json headRefName --limit 200 2>/dev/null); then
+              echo "Offene PRs nicht abrufbar – Aufräumung übersprungen."
+              return 0
+            fi
+            local keep=" "
+            local ref
+            while IFS= read -r ref; do
+              [ -n "$ref" ] && keep="$keep$(slugify "$ref") "
+            done < <(printf '%s' "$open_json" \
+                     | python3 -c "import sys,json;[print(p['headRefName']) for p in json.load(sys.stdin)]")
+            local d slug
+            for d in preview/*/; do
+              [ -d "$d" ] || continue
+              slug=$(basename "$d")
+              case "$keep" in
+                *" $slug "*) : ;;                                  # PR offen -> behalten
+                *) echo "Entferne verwaiste Vorschau: $slug"; rm -rf "$d" ;;
+              esac
+            done
+          }
+          prune_stale_previews
+
           # Portal (preview/index.html) mit Links zu Produktion + Vorschauen
           # aus dem aktuellen Stand von gh-pages neu erzeugen.
           python3 "$GITHUB_WORKSPACE/scripts/gen_portal.py" --repo "$GITHUB_REPOSITORY" --root .
