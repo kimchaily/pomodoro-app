@@ -25,6 +25,9 @@ Pomodoro-App als **PWA** (im Browser installierbar) und als **Android-App**
   (Honig, Rosé, Salbei, Ozean, Schiefer) mit weißen Elementen auf Farbfläche;
   die Farbe variiert je Modus (Fokus / kurze / lange Pause), die Statusleiste
   färbt sich passend mit
+- **Schriftarten**: fünf Stile zur Auswahl (Standard, Elegant/Serif, Leicht,
+  Schmal, Nerdy/Mono) – reine System-Fonts, damit die App offline bleibt und
+  auf jedem Gerät ohne Download passt
 - **Komfort**: Bildschirm-Wachhalten (während des Timers) oder „Display immer
   an", Hell/Dunkel/Auto-Design, Tastenkürzel (Leertaste/R/S). Ein Tab-Wechsel
   setzt den laufenden Timer nicht zurück – das geschieht nur über die

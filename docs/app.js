@@ -26,6 +26,7 @@ const DEFAULT_SETTINGS = {
   sound: "chime", volume: 70, tick: false,
   notify: true, vibrate: true,
   wakeLock: false, alwaysOn: false, theme: "auto", colorTheme: "classic",
+  font: "system",
 };
 
 let settings = store.load("pomo.settings", DEFAULT_SETTINGS);
@@ -770,6 +771,7 @@ const settingBindings = [
   ["set-always-on", "alwaysOn", "checkbox"],
   ["set-theme", "theme", "select"],
   ["set-color-theme", "colorTheme", "select"],
+  ["set-font", "font", "select"],
 ];
 
 function loadSettingsUI() {
@@ -797,6 +799,7 @@ function bindSettings() {
       store.save("pomo.settings", settings);
 
       if (key === "theme" || key === "colorTheme") applyTheme();
+      if (key === "font") applyFont();
       if (key === "notify" && settings.notify) requestNotifyPermission();
       if (key === "wakeLock" || key === "alwaysOn") updateWakeLock();
       // Geänderte Dauer auf den passenden, nicht laufenden Modus übertragen.
@@ -824,6 +827,10 @@ function applyTheme() {
   // Hell/Dunkel greift nur im klassischen Design – bei Farbschemata deaktivieren.
   document.getElementById("set-theme").disabled = settings.colorTheme !== "classic";
   updateMetaThemeColor();
+}
+
+function applyFont() {
+  document.body.dataset.font = settings.font;
 }
 
 // Browser-/Statusleiste an die aktuelle Hintergrundfarbe angleichen.
@@ -943,6 +950,7 @@ if ("serviceWorker" in navigator) {
 /* ============================== Start ============================== */
 
 applyTheme();
+applyFont();
 loadSettingsUI();
 bindSettings();
 bindUI();
