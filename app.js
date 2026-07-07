@@ -25,7 +25,7 @@ const DEFAULT_SETTINGS = {
   autoStartBreaks: true, autoStartFocus: false,
   sound: "chime", volume: 70, tick: false,
   notify: true, vibrate: true,
-  wakeLock: false, alwaysOn: false, theme: "auto",
+  wakeLock: false, alwaysOn: false, theme: "auto", colorTheme: "classic",
 };
 
 let settings = store.load("pomo.settings", DEFAULT_SETTINGS);
@@ -708,6 +708,7 @@ document.addEventListener("visibilitychange", () => {
 /* ============================== Rendering ============================== */
 
 const RING_CIRCUMFERENCE = 2 * Math.PI * 138;
+let lastRenderedMode = null;
 
 function formatTime(ms) {
   const totalSec = Math.ceil(ms / 1000);
@@ -737,6 +738,10 @@ function renderTimer() {
     tab.classList.toggle("active", tab.dataset.mode === timer.mode);
   });
   document.body.dataset.mode = timer.mode;
+  if (lastRenderedMode !== timer.mode) {
+    lastRenderedMode = timer.mode;
+    updateMetaThemeColor(); // Hintergrundfarbe hängt vom Modus ab
+  }
 
   const dots = document.getElementById("cycle-dots");
   if (dots.childElementCount !== settings.longEvery) {
@@ -764,6 +769,7 @@ const settingBindings = [
   ["set-wakelock", "wakeLock", "checkbox"],
   ["set-always-on", "alwaysOn", "checkbox"],
   ["set-theme", "theme", "select"],
+  ["set-color-theme", "colorTheme", "select"],
 ];
 
 function loadSettingsUI() {
@@ -790,7 +796,7 @@ function bindSettings() {
 
       store.save("pomo.settings", settings);
 
-      if (key === "theme") applyTheme();
+      if (key === "theme" || key === "colorTheme") applyTheme();
       if (key === "notify" && settings.notify) requestNotifyPermission();
       if (key === "wakeLock" || key === "alwaysOn") updateWakeLock();
       // Geänderte Dauer auf den passenden, nicht laufenden Modus übertragen.
@@ -814,6 +820,16 @@ function bindSettings() {
 
 function applyTheme() {
   document.documentElement.dataset.theme = settings.theme;
+  document.body.dataset.colorTheme = settings.colorTheme;
+  // Hell/Dunkel greift nur im klassischen Design – bei Farbschemata deaktivieren.
+  document.getElementById("set-theme").disabled = settings.colorTheme !== "classic";
+  updateMetaThemeColor();
+}
+
+// Browser-/Statusleiste an die aktuelle Hintergrundfarbe angleichen.
+function updateMetaThemeColor() {
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.content = getComputedStyle(document.body).backgroundColor;
 }
 
 /* ============================== App-Verkabelung ============================== */
