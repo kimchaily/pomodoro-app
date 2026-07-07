@@ -98,6 +98,12 @@ Der Workflow `.github/workflows/pages.yml` veröffentlicht alles in den Branch
 Bei jedem PR postet der Workflow den Vorschau-Link als Kommentar. So lässt sich
 jeder Branch live testen, bevor er nach `main` gemergt wird.
 
+**Selbstheilung:** Bei jedem Deploy gleicht der Workflow die vorhandenen
+Vorschauen gegen die tatsächlich offenen PRs ab und entfernt verwaiste
+Ordner. Dadurch verschwinden hängengebliebene Vorschauen (z. B. bei mehrfach
+wiederverwendeten Branchnamen oder verpassten `closed`-Events) spätestens beim
+nächsten Deploy von selbst – unabhängig vom einzelnen Aufräum-Event.
+
 **Deploy-Portal:** <https://kimchaily.github.io/pomodoro-app/preview/> listet
 Produktion und alle offenen PR-Vorschauen mit Links auf – so muss kein
 Branch-Name von Hand eingegeben werden. Die Seite wird bei jedem Deploy neu
