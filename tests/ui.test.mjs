@@ -6,6 +6,7 @@
  *   2. − / + stepper buttons on the task estimate field
  *   3. Tomato app icon assets are present and served
  *   4. Color themes (Farbschemata) incl. per-mode shades and persistence
+ *   5. Font selection (Schriftart) incl. inheritance and persistence
  *
  * Run it:
  *   npm install            # once, pulls in playwright (devDependency)
@@ -152,6 +153,25 @@ try {
   await page.reload({ waitUntil: "networkidle" });
   check("theme persists after reload", await page.evaluate(() => document.body.dataset.colorTheme), "honey");
   check("theme select restored after reload", await page.locator("#set-color-theme").inputValue(), "honey");
+
+  /* --- 5. Schriftart --- */
+  await page.click("#btn-settings");
+  const fontSel = page.locator("#set-font");
+  check("default font is system", await fontSel.inputValue(), "system");
+
+  await fontSel.selectOption("mono");
+  check("body carries mono font", await page.evaluate(() => document.body.dataset.font), "mono");
+  check("computed font-family is monospace stack",
+    (await page.evaluate(() => getComputedStyle(document.body).fontFamily)).toLowerCase().includes("monospace"), true);
+  // Buttons erben die Schrift (font-family: inherit)
+  check("start button inherits mono font",
+    (await page.evaluate(() => getComputedStyle(document.getElementById("btn-start")).fontFamily)).toLowerCase().includes("monospace"), true);
+  await page.click('.close-dialog[data-close="settings-dialog"]');
+
+  // Auswahl übersteht ein Neuladen
+  await page.reload({ waitUntil: "networkidle" });
+  check("font persists after reload", await page.evaluate(() => document.body.dataset.font), "mono");
+  check("font select restored after reload", await page.locator("#set-font").inputValue(), "mono");
 
   /* --- 3. Tomato icon assets served --- */
   for (const asset of ["icon.svg", "icon-192.png", "icon-512.png"]) {

@@ -59,10 +59,23 @@ body[data-color-theme]:not([data-color-theme="classic"]) {
 body[data-color-theme]:not([data-color-theme="classic"])[data-mode="short"] { --tc: var(--tc-short); }
 body[data-color-theme]:not([data-color-theme="classic"])[data-mode="long"]  { --tc: var(--tc-long); }
 
+/* ===== Schriftarten: offline-taugliche System-/Fallback-Stacks =====
+   Keine Web-Fonts (App läuft offline); jede Auswahl ist ein Stack, der die
+   gewünschte Anmutung auf möglichst vielen Geräten trifft und sonst sauber
+   auf eine generische Familie zurückfällt. Genannte, aber ggf. proprietäre
+   Fonts (Frutiger, Bahnschrift, Consolas) stehen vorne und greifen dort, wo
+   sie installiert sind. */
+:root { --font: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+body[data-font="system"]    { --font: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+body[data-font="serif"]     { --font: Georgia, "Noto Serif", Cambria, "Times New Roman", serif; }
+body[data-font="light"]     { --font: "sans-serif-light", "Segoe UI Light", "HelveticaNeue-Light", "SF Pro Text", system-ui, sans-serif; }
+body[data-font="condensed"] { --font: "sans-serif-condensed", "Roboto Condensed", Bahnschrift, "Arial Narrow", sans-serif; }
+body[data-font="mono"]      { --font: ui-monospace, "Roboto Mono", Consolas, "SF Mono", Menlo, monospace; }
+
 * { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; }
 body {
-  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-family: var(--font);
   background: var(--bg);
   color: var(--text);
   min-height: 100vh;
@@ -70,6 +83,9 @@ body {
   transition: background .3s;
   -webkit-tap-highlight-color: transparent;
 }
+/* Formularelemente erben die gewählte Schrift, sonst blieben Buttons/Inputs
+   beim System-Font und die Auswahl wirkte nur halb. */
+button, input, select, textarea { font-family: inherit; }
 
 main { max-width: 480px; margin: 0 auto; padding: 0 16px 40px; }
 
