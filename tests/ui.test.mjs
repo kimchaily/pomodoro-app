@@ -1,10 +1,11 @@
 /**
  * End-to-end UI checks for the Pomodoro app.
  *
- * Covers the three recent additions:
+ * Covers the recent additions:
  *   1. Resettable Pomodoro cycle counter (tap the dots)
  *   2. − / + stepper buttons on the task estimate field
  *   3. Tomato app icon assets are present and served
+ *   4. Color themes (Farbschemata) incl. per-mode shades and persistence
  *
  * Run it:
  *   npm install            # once, pulls in playwright (devDependency)
@@ -119,6 +120,38 @@ try {
   /* --- reset persists across reload --- */
   await page.reload({ waitUntil: "networkidle" });
   check("counter still 0 after reload", await page.locator("#cycle-dots span.done").count(), 0);
+
+  /* --- 4. Farbschemata --- */
+  // body animiert den Hintergrund (transition: background .3s) – auf den
+  // Zielwert warten und den tatsächlichen Endwert zurückgeben.
+  const settledBg = async (expected) => {
+    await page.waitForFunction(
+      (rgb) => getComputedStyle(document.body).backgroundColor === rgb,
+      expected, { timeout: 2000 }
+    ).catch(() => {});
+    return page.evaluate(() => getComputedStyle(document.body).backgroundColor);
+  };
+
+  await page.click("#btn-settings");
+  const colorSel = page.locator("#set-color-theme");
+  check("default color theme is classic", await colorSel.inputValue(), "classic");
+  check("light/dark select enabled for classic", await page.locator("#set-theme").isDisabled(), false);
+
+  await colorSel.selectOption("honey");
+  check("body carries honey theme", await page.evaluate(() => document.body.dataset.colorTheme), "honey");
+  check("background turns gold (#d9a44e)", await settledBg("rgb(217, 164, 78)"), "rgb(217, 164, 78)");
+  check("light/dark select disabled for color theme", await page.locator("#set-theme").isDisabled(), true);
+  await page.click('.close-dialog[data-close="settings-dialog"]');
+
+  // Farbfläche folgt dem Modus (lange Pause = dunkleres Gold)
+  await page.click('.mode-tab[data-mode="long"]');
+  check("long break uses darker gold (#c98f38)", await settledBg("rgb(201, 143, 56)"), "rgb(201, 143, 56)");
+  await page.click('.mode-tab[data-mode="focus"]');
+
+  // Schema übersteht ein Neuladen
+  await page.reload({ waitUntil: "networkidle" });
+  check("theme persists after reload", await page.evaluate(() => document.body.dataset.colorTheme), "honey");
+  check("theme select restored after reload", await page.locator("#set-color-theme").inputValue(), "honey");
 
   /* --- 3. Tomato icon assets served --- */
   for (const asset of ["icon.svg", "icon-192.png", "icon-512.png"]) {
