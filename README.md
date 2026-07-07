@@ -21,6 +21,10 @@ Pomodoro-App als **PWA** (im Browser installierbar) und als **Android-App**
   7-Tage-Diagramm, Fokusminuten
 - **Signale**: Benachrichtigungen, Vibration, 3 Klangthemen mit Lautstärke,
   optionales Ticken
+- **Farbschemata**: Neben dem klassischen Design fünf vollflächige Themes
+  (Honig, Rosé, Salbei, Ozean, Schiefer) mit weißen Elementen auf Farbfläche;
+  die Farbe variiert je Modus (Fokus / kurze / lange Pause), die Statusleiste
+  färbt sich passend mit
 - **Komfort**: Bildschirm-Wachhalten (während des Timers) oder „Display immer
   an", Hell/Dunkel/Auto-Design, Tastenkürzel (Leertaste/R/S). Ein Tab-Wechsel
   setzt den laufenden Timer nicht zurück – das geschieht nur über die

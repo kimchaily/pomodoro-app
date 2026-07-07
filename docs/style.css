@@ -31,6 +31,34 @@ body[data-mode="long"]  { --accent: #3a7bd5; --accent-soft: #3a7bd522; }
   }
 }
 
+/* ===== Farbschemata: vollflächige Designs (weiße Elemente auf Farbfläche) =====
+   Jedes Schema definiert eine Farbe pro Modus; alle weiteren Variablen leitet
+   der gemeinsame Block darunter ab. Neues Schema = eine Zeile hier + eine
+   <option> in den Einstellungen. */
+body[data-color-theme="honey"] { --tc-focus: #d9a44e; --tc-short: #c9b16b; --tc-long: #c98f38; }
+body[data-color-theme="rose"]  { --tc-focus: #c9737a; --tc-short: #d69aa0; --tc-long: #a85a63; }
+body[data-color-theme="sage"]  { --tc-focus: #8aa578; --tc-short: #a3b899; --tc-long: #6f8f63; }
+body[data-color-theme="ocean"] { --tc-focus: #5585b5; --tc-short: #7aa3c9; --tc-long: #40688f; }
+body[data-color-theme="slate"] { --tc-focus: #4a5568; --tc-short: #5d6b80; --tc-long: #38414f; }
+
+body[data-color-theme]:not([data-color-theme="classic"]) {
+  --tc: var(--tc-focus);
+  --bg: var(--tc);
+  --card: #ffffff1f;
+  --text: #ffffff;
+  --muted: #ffffffbf;
+  --accent: #ffffff;
+  --accent-soft: #ffffff2e;
+  --on-accent: var(--tc);
+  --accent-edge: color-mix(in srgb, var(--tc) 62%, black);
+  --ring-track: #ffffff3d;
+  --shadow: 0 4px 18px #00000018;
+  --sheet-bg: color-mix(in srgb, var(--tc) 68%, black);
+  --danger: #ff9d96;
+}
+body[data-color-theme]:not([data-color-theme="classic"])[data-mode="short"] { --tc: var(--tc-short); }
+body[data-color-theme]:not([data-color-theme="classic"])[data-mode="long"]  { --tc: var(--tc-long); }
+
 * { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; }
 body {
@@ -88,7 +116,7 @@ main { max-width: 480px; margin: 0 auto; padding: 0 16px 40px; }
   cursor: pointer;
   transition: background .2s, color .2s;
 }
-.mode-tab.active { background: var(--accent); color: #fff; }
+.mode-tab.active { background: var(--accent); color: var(--on-accent, #fff); }
 
 .timer-card { text-align: center; }
 
@@ -153,12 +181,12 @@ main { max-width: 480px; margin: 0 auto; padding: 0 16px 40px; }
 .ctrl-btn:active { transform: scale(.95); }
 .ctrl-btn.primary {
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent, #fff);
   font-size: 1.3rem;
   padding: 16px 52px;
-  box-shadow: 0 6px 0 color-mix(in srgb, var(--accent) 70%, black);
+  box-shadow: 0 6px 0 var(--accent-edge, color-mix(in srgb, var(--accent) 70%, black));
 }
-.ctrl-btn.primary:active { box-shadow: 0 2px 0 color-mix(in srgb, var(--accent) 70%, black); transform: translateY(4px); }
+.ctrl-btn.primary:active { box-shadow: 0 2px 0 var(--accent-edge, color-mix(in srgb, var(--accent) 70%, black)); transform: translateY(4px); }
 .ctrl-btn.small {
   background: var(--card);
   color: var(--text);
@@ -222,9 +250,10 @@ input[type="text"], input[type="number"], select {
   padding: 10px;
   font-size: 1rem;
 }
+input::placeholder { color: var(--muted); opacity: 1; }
 .add-btn {
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent, #fff);
   border: none;
   border-radius: 10px;
   width: 46px;
@@ -267,7 +296,7 @@ input[type="text"], input[type="number"], select {
   border: none;
   border-radius: 12px;
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent, #fff);
   font-size: .95rem;
   font-weight: 700;
   cursor: pointer;
@@ -285,13 +314,13 @@ input[type="text"], input[type="number"], select {
   cursor: pointer;
   padding: 6px 8px;
 }
-.text-btn.danger { color: #d9534f; margin-top: 14px; }
+.text-btn.danger { color: var(--danger, #d9534f); margin-top: 14px; }
 
 /* Dialoge als Bottom-Sheets */
 .sheet {
   border: none;
   border-radius: 20px 20px 0 0;
-  background: var(--card);
+  background: var(--sheet-bg, var(--card));
   color: var(--text);
   width: 100%;
   max-width: 480px;
