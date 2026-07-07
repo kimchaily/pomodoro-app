@@ -43,6 +43,35 @@ hängt sie an das Release **„latest“** an:
 Beim ersten Start fragt die App nach der Benachrichtigungs-Berechtigung;
 diese wird für den Hintergrund-Alarm benötigt.
 
+### Signaturschlüssel & Updates
+
+Damit die In-App-Updatefunktion funktioniert, müssen alle APKs mit **derselben
+Signatur** gebaut werden – sonst lehnt Android das Update ab
+(„App not installed as package conflicts with an existing package"). Der
+CI-Build signiert deshalb mit einem festen Debug-Keystore, der als
+**GitHub-Secret** hinterlegt ist und nie im Repo liegt.
+
+**Einmalige Einrichtung** (Repo-Einstellungen):
+
+1. Keystore erzeugen (Standard-Debug-Parameter, 30 Jahre gültig):
+   ```bash
+   keytool -genkeypair -v -keystore debug.keystore -storepass android \
+     -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 \
+     -validity 10950 -dname "CN=Android Debug,O=Android,C=US"
+   ```
+2. In Base64 umwandeln: `base64 -w0 debug.keystore`
+3. Den Wert unter **Settings → Secrets and variables → Actions → New
+   repository secret** als **`DEBUG_KEYSTORE_BASE64`** speichern.
+
+Fehlt das Secret, baut der Workflow trotzdem – dann aber mit einem zufälligen
+Key (mit Warnung im Log), und Updates schlagen fehl.
+
+**Hinweis bei Signaturwechsel:** Wurde die App zuvor mit einer anderen Signatur
+installiert (z. B. ältere Builds mit zufälligem CI-Key), muss sie **einmalig
+deinstalliert** und neu installiert werden – dabei gehen lokale Daten
+(Einstellungen, Aufgaben, Statistik) verloren. Danach laufen Updates ohne
+Deinstallation.
+
 ## Als PWA nutzen (Alternative ohne APK)
 
 Die PWA wird automatisch auf GitHub Pages veröffentlicht
