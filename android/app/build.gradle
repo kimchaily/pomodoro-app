@@ -1,5 +1,12 @@
 apply plugin: 'com.android.application'
 
+// Fester Debug-Signaturschlüssel: Der CI-Build stellt debug.keystore aus dem
+// GitHub-Secret DEBUG_KEYSTORE_BASE64 bereit. Dadurch tragen alle Builds
+// dieselbe Signatur und lassen sich als Update über die installierte App
+// installieren. Fehlt die Datei (z. B. lokaler Dev-Build ohne Secret), nutzt
+// der Debug-Typ automatisch Androids Standard-Debug-Key.
+def debugKeystoreFile = file('debug.keystore')
+
 android {
     namespace = "com.kimchaily.pomodoro"
     compileSdk = rootProject.ext.compileSdkVersion
@@ -16,7 +23,22 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    if (debugKeystoreFile.exists()) {
+        signingConfigs {
+            stableDebug {
+                storeFile debugKeystoreFile
+                storePassword 'android'
+                keyAlias 'androiddebugkey'
+                keyPassword 'android'
+            }
+        }
+    }
     buildTypes {
+        debug {
+            if (debugKeystoreFile.exists()) {
+                signingConfig signingConfigs.stableDebug
+            }
+        }
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'

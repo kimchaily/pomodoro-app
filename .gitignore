@@ -2,3 +2,7 @@ node_modules/
 
 # Wird nur im CI-Build erzeugt (Build-Identität für die In-App-Updateprüfung)
 docs/version.json
+
+# Signaturschlüssel: liegt als GitHub-Secret DEBUG_KEYSTORE_BASE64 vor,
+# wird im CI daraus wiederhergestellt und nie eingecheckt.
+android/app/debug.keystore
