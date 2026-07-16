@@ -7,6 +7,7 @@
  *   3. Tomato app icon assets are present and served
  *   4. Color themes (Farbschemata) incl. per-mode shades and persistence
  *   5. Font selection (Schriftart) incl. inheritance and persistence
+ *   6. Responsive layout: two columns on desktop, stacked on mobile
  *
  * Run it:
  *   npm install            # once, pulls in playwright (devDependency)
@@ -177,6 +178,22 @@ try {
   for (const asset of ["icon.svg", "icon-192.png", "icon-512.png"]) {
     const status = (await page.request.get(`http://localhost:${PORT}/${asset}`)).status();
     check(`${asset} is served`, status, 200);
+  }
+
+  /* --- 6. Responsive layout --- */
+  await page.setViewportSize({ width: 1000, height: 860 });
+  await page.waitForTimeout(150);
+  {
+    const t = await page.locator(".timer-card").boundingBox();
+    const k = await page.locator(".tasks-card").boundingBox();
+    check("desktop: tasks card sits beside timer", k.x > t.x + t.width / 2, true);
+  }
+  await page.setViewportSize({ width: 400, height: 860 });
+  await page.waitForTimeout(150);
+  {
+    const t = await page.locator(".timer-card").boundingBox();
+    const k = await page.locator(".tasks-card").boundingBox();
+    check("mobile: tasks card stacks below timer", k.y > t.y + 50, true);
   }
 
   check("no console/page errors", consoleErrors.length, 0);
