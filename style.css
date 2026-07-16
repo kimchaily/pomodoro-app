@@ -386,3 +386,45 @@ input::placeholder { color: var(--muted); opacity: 1; }
 }
 .chart .bar-val { font-size: .75rem; color: var(--muted); }
 .chart .bar-day { font-size: .72rem; color: var(--muted); }
+
+/* ============================== Desktop / breite Screens ==============================
+   Mobil bleibt die schmale, zentrierte Spalte (Design der App). Ab Tablet-Breite
+   nutzt das Layout die Fläche: Timer links, Aufgaben rechts, und die Dialoge
+   erscheinen als zentrierte Modals statt als Bottom-Sheets. */
+@media (min-width: 760px) {
+  .topbar { max-width: 900px; }
+
+  main {
+    max-width: 900px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-areas:
+      "tabs  tasks"
+      "timer tasks";
+    column-gap: 40px;
+    align-items: start;
+    padding-bottom: 48px;
+  }
+  .mode-tabs { grid-area: tabs; margin: 0 0 18px; }
+  .timer-card { grid-area: timer; align-self: start; }
+  .tasks-card { grid-area: tasks; margin-top: 0; }
+
+  /* Etwas größerer Ring, da die Spalte breiter ist. */
+  .ring-wrap { width: min(40vw, 360px); }
+
+  /* Dialoge als zentrierte Modals statt Bottom-Sheets. */
+  .sheet {
+    border-radius: 18px;
+    margin: auto;
+    max-width: 460px;
+    max-height: 86vh;
+    padding: 20px 24px 26px;
+    box-shadow: 0 16px 48px #00000047;
+  }
+}
+
+/* Große Desktop-Fenster: nicht endlos breit werden lassen. */
+@media (min-width: 1180px) {
+  .topbar, main { max-width: 1000px; }
+  .ring-wrap { width: min(34vw, 380px); }
+}
