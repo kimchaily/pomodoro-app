@@ -28,6 +28,9 @@ Pomodoro-App als **PWA** (im Browser installierbar) und als **Android-App**
 - **Schriftarten**: fünf Stile zur Auswahl (Standard, Elegant/Serif, Leicht,
   Schmal, Nerdy/Mono) – reine System-Fonts, damit die App offline bleibt und
   auf jedem Gerät ohne Download passt
+- **Responsive**: mobil die gewohnte schmale Spalte, ab Tablet-/Desktop-Breite
+  ein zweispaltiges Layout (Timer links, Aufgaben rechts) mit zentrierten
+  Dialogen – ideal für die PWA am Desktop
 - **Komfort**: Bildschirm-Wachhalten (während des Timers) oder „Display immer
   an", Hell/Dunkel/Auto-Design, Tastenkürzel (Leertaste/R/S). Ein Tab-Wechsel
   setzt den laufenden Timer nicht zurück – das geschieht nur über die
