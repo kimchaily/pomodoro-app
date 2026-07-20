@@ -281,7 +281,7 @@ input::placeholder { color: var(--muted); opacity: 1; }
 .task-item {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   padding: 11px 8px;
   border-radius: 10px;
   border-left: 4px solid transparent;
@@ -289,15 +289,36 @@ input::placeholder { color: var(--muted); opacity: 1; }
 }
 .task-item.active { border-left-color: var(--accent); background: var(--accent-soft); }
 .task-item.done .task-title { text-decoration: line-through; color: var(--muted); }
+/* Beim Ziehen zum Sortieren angehoben darstellen. */
+.task-item.dragging { opacity: .6; background: var(--accent-soft); }
+body.dragging-task { cursor: grabbing; user-select: none; }
+
+/* Griff zum Sortieren – fasst den Pointer (Maus wie Touch), daher touch-action:none,
+   damit die Seite beim Ziehen nicht scrollt. */
+.task-drag {
+  background: none; border: none;
+  color: var(--muted);
+  font-size: 1.15rem;
+  line-height: 1;
+  cursor: grab;
+  padding: 4px 2px;
+  flex-shrink: 0;
+  touch-action: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.task-drag:active { cursor: grabbing; }
+
 .task-check { width: 20px; height: 20px; accent-color: var(--accent); flex-shrink: 0; }
 .task-title { flex: 1; word-break: break-word; }
+.task-edit-input { flex: 1; min-width: 0; padding: 6px 8px; font-size: 1rem; }
 .task-count { color: var(--muted); font-size: .85rem; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.task-del {
+.task-edit, .task-del {
   background: none; border: none;
   color: var(--muted);
   font-size: 1.05rem;
   cursor: pointer;
   padding: 4px 6px;
+  flex-shrink: 0;
 }
 .task-footer { margin-top: 8px; text-align: right; }
 
