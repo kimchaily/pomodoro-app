@@ -106,6 +106,45 @@ try {
   check("task shows 0/3", (await page.locator(".task-count").first().textContent())?.replace(/\s*🍅$/, ""), "0/3");
   check("estimate resets to 1 after add", await est.inputValue(), "1");
 
+  /* --- 7. Task bearbeiten (Stift-Icon) --- */
+  // Zweite Aufgabe anlegen, damit sich auch die Reihenfolge testen lässt.
+  await page.fill("#task-input", "Zweite Aufgabe");
+  await page.click(".add-btn");
+  check("two tasks exist", await page.locator(".task-item").count(), 2);
+
+  // Stift öffnet ein Eingabefeld; Enter übernimmt den neuen Titel.
+  await page.locator(".task-item").first().locator(".task-edit").click();
+  const editInput = page.locator(".task-item").first().locator(".task-edit-input");
+  check("pencil opens edit field", await editInput.count(), 1);
+  await editInput.fill("Testaufgabe bearbeitet");
+  await editInput.press("Enter");
+  check("title updates after edit",
+    await page.locator(".task-item").first().locator(".task-title").textContent(),
+    "Testaufgabe bearbeitet");
+
+  /* --- 8. Drag & Drop: Reihenfolge --- */
+  const handle = page.locator(".task-item").first().locator(".task-drag");
+  const hb = await handle.boundingBox();
+  const secondBox = await page.locator(".task-item").nth(1).boundingBox();
+  await page.mouse.move(hb.x + hb.width / 2, hb.y + hb.height / 2);
+  await page.mouse.down();
+  // Über die Mitte der zweiten Aufgabe hinaus nach unten ziehen.
+  await page.mouse.move(hb.x + hb.width / 2, secondBox.y + secondBox.height / 2 + 4, { steps: 6 });
+  await page.mouse.move(hb.x + hb.width / 2, secondBox.y + secondBox.height + 8, { steps: 4 });
+  await page.mouse.up();
+  check("drag moves first task below second",
+    await page.locator(".task-item").first().locator(".task-title").textContent(),
+    "Zweite Aufgabe");
+
+  // Bearbeitung und Reihenfolge überstehen ein Neuladen.
+  await page.reload({ waitUntil: "networkidle" });
+  check("reorder persists after reload",
+    await page.locator(".task-item").first().locator(".task-title").textContent(),
+    "Zweite Aufgabe");
+  check("edited title persists after reload",
+    await page.locator(".task-item").nth(1).locator(".task-title").textContent(),
+    "Testaufgabe bearbeitet");
+
   /* --- 1. Resettable cycle counter --- */
   check("cycle has 4 dots (longEvery)", await page.locator("#cycle-dots span").count(), 4);
 
