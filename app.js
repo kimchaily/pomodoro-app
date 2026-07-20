@@ -363,6 +363,9 @@ function renderStats() {
 
 function saveTasks() { store.save("pomo.tasks", tasks); }
 
+// id der Aufgabe, deren Titel gerade inline bearbeitet wird (oder null).
+let editingTaskId = null;
+
 function creditActiveTask() {
   const task = tasks.find((t) => t.active && !t.done);
   if (task) {
@@ -372,63 +375,181 @@ function creditActiveTask() {
   }
 }
 
+// Reihenfolge per Zeigergeste (Maus wie Touch). Der Griff fängt den Pointer ein,
+// die Liste wird beim Ziehen live umsortiert und beim Loslassen persistiert.
+function bindTaskDrag(handle, li) {
+  handle.addEventListener("pointerdown", (e) => {
+    if (e.pointerType === "mouse" && e.button !== 0) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const list = document.getElementById("task-list");
+    const pointerId = e.pointerId;
+    // Fängt den Pointer ein (verhindert Scrollen bei Touch). Wird der Eintrag
+    // im DOM verschoben, kann der Browser die Capture lösen – deshalb hören die
+    // Move-/Up-Handler am window mit, die die Events auch dann noch erreichen.
+    try { handle.setPointerCapture(pointerId); } catch { /* nicht unterstützt */ }
+    li.classList.add("dragging");
+    document.body.classList.add("dragging-task");
+
+    const onMove = (ev) => {
+      if (ev.pointerId !== pointerId) return;
+      const others = [...list.children].filter((el) => el !== li);
+      let before = null;
+      for (const el of others) {
+        const rect = el.getBoundingClientRect();
+        if (ev.clientY < rect.top + rect.height / 2) { before = el; break; }
+      }
+      if (before) {
+        if (before !== li.nextSibling) list.insertBefore(li, before);
+      } else if (li !== list.lastElementChild) {
+        list.appendChild(li);
+      }
+    };
+
+    const finish = (ev) => {
+      if (ev && ev.pointerId !== pointerId) return;
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", finish);
+      window.removeEventListener("pointercancel", finish);
+      try { handle.releasePointerCapture(pointerId); } catch { /* schon frei */ }
+      li.classList.remove("dragging");
+      document.body.classList.remove("dragging-task");
+      // Neue Reihenfolge aus dem DOM in das tasks-Array übernehmen.
+      const order = [...list.children].map((el) => el.dataset.id);
+      tasks.sort((a, b) => order.indexOf(a.id) - order.indexOf(b.id));
+      saveTasks();
+      renderTasks();
+    };
+
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", finish);
+    window.addEventListener("pointercancel", finish);
+  });
+}
+
+let renderingTasks = false;
+
 function renderTasks() {
-  const list = document.getElementById("task-list");
-  list.innerHTML = "";
-  for (const task of tasks) {
-    const li = document.createElement("li");
-    li.className = "task-item" + (task.active ? " active" : "") + (task.done ? " done" : "");
+  // Schutz gegen Re-Entrancy: Wird beim Leeren der Liste ein Blur ausgelöst
+  // (Bearbeiten aktiv), soll das kein zweites Rendern mittendrin anstoßen.
+  if (renderingTasks) return;
+  renderingTasks = true;
+  try {
+    const list = document.getElementById("task-list");
+    list.innerHTML = "";
+    let focusInput = null;
 
-    const check = document.createElement("input");
-    check.type = "checkbox";
-    check.className = "task-check";
-    check.checked = task.done;
-    check.addEventListener("click", (e) => {
-      e.stopPropagation();
-      task.done = check.checked;
-      if (task.done) task.active = false;
-      saveTasks();
-      renderTasks();
-    });
+    for (const task of tasks) {
+      const li = document.createElement("li");
+      li.className = "task-item" + (task.active ? " active" : "") + (task.done ? " done" : "");
+      li.dataset.id = task.id;
 
-    const title = document.createElement("span");
-    title.className = "task-title";
-    title.textContent = task.title;
+      const drag = document.createElement("button");
+      drag.type = "button";
+      drag.className = "task-drag";
+      drag.textContent = "⠿";
+      drag.title = "Zum Sortieren ziehen";
+      drag.setAttribute("aria-label", "Aufgabe verschieben");
+      drag.addEventListener("click", (e) => e.stopPropagation());
+      bindTaskDrag(drag, li);
 
-    const count = document.createElement("span");
-    count.className = "task-count";
-    count.textContent = `${task.donePomos}/${task.est} 🍅`;
+      const check = document.createElement("input");
+      check.type = "checkbox";
+      check.className = "task-check";
+      check.checked = task.done;
+      check.addEventListener("click", (e) => {
+        e.stopPropagation();
+        task.done = check.checked;
+        if (task.done) task.active = false;
+        if (editingTaskId === task.id) editingTaskId = null;
+        saveTasks();
+        renderTasks();
+      });
 
-    const del = document.createElement("button");
-    del.className = "task-del";
-    del.textContent = "🗑";
-    del.title = "Löschen";
-    del.addEventListener("click", (e) => {
-      e.stopPropagation();
-      tasks = tasks.filter((t) => t.id !== task.id);
-      saveTasks();
-      renderTasks();
-    });
+      // Titel: normalerweise Text, im Bearbeiten-Modus ein Eingabefeld.
+      let titleEl;
+      if (editingTaskId === task.id) {
+        titleEl = document.createElement("input");
+        titleEl.type = "text";
+        titleEl.className = "task-edit-input";
+        titleEl.maxLength = 120;
+        titleEl.value = task.title;
+        titleEl.addEventListener("click", (e) => e.stopPropagation());
+        const commit = () => {
+          if (editingTaskId !== task.id) return;
+          const v = titleEl.value.trim();
+          if (v) task.title = v;
+          editingTaskId = null;
+          saveTasks();
+          renderTasks();
+        };
+        titleEl.addEventListener("keydown", (e) => {
+          if (e.key === "Enter") { e.preventDefault(); commit(); }
+          else if (e.key === "Escape") { e.preventDefault(); editingTaskId = null; renderTasks(); }
+        });
+        titleEl.addEventListener("blur", commit);
+        focusInput = titleEl;
+      } else {
+        titleEl = document.createElement("span");
+        titleEl.className = "task-title";
+        titleEl.textContent = task.title;
+      }
 
-    li.append(check, title, count, del);
-    li.addEventListener("click", () => {
-      if (task.done) return;
-      const wasActive = task.active;
-      tasks.forEach((t) => (t.active = false));
-      task.active = !wasActive;
-      saveTasks();
-      renderTasks();
-    });
-    list.append(li);
+      const count = document.createElement("span");
+      count.className = "task-count";
+      count.textContent = `${task.donePomos}/${task.est} 🍅`;
+
+      const edit = document.createElement("button");
+      edit.type = "button";
+      edit.className = "task-edit";
+      edit.textContent = "✏️";
+      edit.title = "Bearbeiten";
+      edit.setAttribute("aria-label", "Aufgabe bearbeiten");
+      edit.addEventListener("click", (e) => {
+        e.stopPropagation();
+        editingTaskId = editingTaskId === task.id ? null : task.id;
+        renderTasks();
+      });
+
+      const del = document.createElement("button");
+      del.type = "button";
+      del.className = "task-del";
+      del.textContent = "🗑";
+      del.title = "Löschen";
+      del.setAttribute("aria-label", "Aufgabe löschen");
+      del.addEventListener("click", (e) => {
+        e.stopPropagation();
+        tasks = tasks.filter((t) => t.id !== task.id);
+        if (editingTaskId === task.id) editingTaskId = null;
+        saveTasks();
+        renderTasks();
+      });
+
+      li.append(drag, check, titleEl, count, edit, del);
+      li.addEventListener("click", () => {
+        if (editingTaskId) return; // im Bearbeiten-Modus keine Auswahl umschalten
+        if (task.done) return;
+        const wasActive = task.active;
+        tasks.forEach((t) => (t.active = false));
+        task.active = !wasActive;
+        saveTasks();
+        renderTasks();
+      });
+      list.append(li);
+    }
+
+    document.getElementById("task-empty").hidden = tasks.length > 0;
+    document.getElementById("task-footer").hidden = !tasks.some((t) => t.done);
+
+    const active = tasks.find((t) => t.active && !t.done);
+    const display = document.getElementById("active-task-display");
+    display.hidden = !active;
+    if (active) document.getElementById("active-task-name").textContent = active.title;
+
+    if (focusInput) { focusInput.focus(); focusInput.select(); }
+  } finally {
+    renderingTasks = false;
   }
-
-  document.getElementById("task-empty").hidden = tasks.length > 0;
-  document.getElementById("task-footer").hidden = !tasks.some((t) => t.done);
-
-  const active = tasks.find((t) => t.active && !t.done);
-  const display = document.getElementById("active-task-display");
-  display.hidden = !active;
-  if (active) document.getElementById("active-task-name").textContent = active.title;
 }
 
 /* ============================== Audio ============================== */
