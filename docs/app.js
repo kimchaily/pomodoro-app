@@ -962,6 +962,29 @@ function updateMetaThemeColor() {
 
 /* ============================== App-Verkabelung ============================== */
 
+// Setzt den Cursor ins Aufgabenfeld ("Woran arbeitest du?").
+function focusTaskInput({ select = false } = {}) {
+  const input = document.getElementById("task-input");
+  if (!input || document.querySelector("dialog[open]")) return;
+  input.focus();
+  if (select) input.select();
+}
+
+// Beim App-Start ins Aufgabenfeld springen – aber nur mit echter Tastatur.
+// Auf Touch-Geräten würde sonst direkt die Bildschirmtastatur hochklappen und
+// den Timer verdecken.
+function focusTaskInputOnLaunch() {
+  const hasKeyboard = !window.matchMedia || window.matchMedia("(hover: hover) and (pointer: fine)").matches;
+  if (hasKeyboard) focusTaskInput();
+}
+
+function openDialog(id) {
+  const dlg = document.getElementById(id);
+  if (!dlg || dlg.open) return;
+  if (id === "stats-dialog") renderStats();
+  dlg.showModal();
+}
+
 function bindUI() {
   document.getElementById("btn-start").addEventListener("click", startPause);
   document.getElementById("btn-reset").addEventListener("click", resetTimer);
@@ -975,12 +998,11 @@ function bindUI() {
   });
 
   // Dialoge
-  document.getElementById("btn-stats").addEventListener("click", () => {
-    renderStats();
-    document.getElementById("stats-dialog").showModal();
-  });
-  document.getElementById("btn-settings").addEventListener("click", () => {
-    document.getElementById("settings-dialog").showModal();
+  document.getElementById("btn-stats").addEventListener("click", () => openDialog("stats-dialog"));
+  document.getElementById("btn-settings").addEventListener("click", () => openDialog("settings-dialog"));
+  document.getElementById("btn-shortcuts").addEventListener("click", () => {
+    document.getElementById("settings-dialog").close();
+    openDialog("shortcuts-dialog");
   });
   document.querySelectorAll(".close-dialog").forEach((btn) => {
     btn.addEventListener("click", () => document.getElementById(btn.dataset.close).close());
@@ -997,8 +1019,9 @@ function bindUI() {
     }
   });
 
-  // Aufgaben – Schätzung per − / + statt manueller Eingabe anpassen
+  // Aufgaben – Schätzung per − / + oder direkter Eingabe anpassen
   const est = document.getElementById("task-est");
+  const taskInput = document.getElementById("task-input");
   const stepEst = (delta) => {
     const min = Number(est.min), max = Number(est.max);
     const current = Math.round(Number(est.value) || min);
@@ -1006,6 +1029,33 @@ function bindUI() {
   };
   document.getElementById("est-dec").addEventListener("click", () => stepEst(-1));
   document.getElementById("est-inc").addEventListener("click", () => stepEst(1));
+
+  // Im Aufgabenfeld: eine Leertaste ganz am Anfang startet/pausiert den Timer,
+  // statt ein führendes Leerzeichen zu tippen. Alles Weitere landet normal im Feld.
+  taskInput.addEventListener("keydown", (e) => {
+    if (e.key === " " && !e.ctrlKey && !e.metaKey && !e.altKey
+        && taskInput.selectionStart === 0 && taskInput.selectionEnd === 0) {
+      e.preventDefault();
+      startPause();
+      return;
+    }
+    // Tab springt direkt auf die Pomodoro-Schätzung – Wert markiert, damit er
+    // sich sofort überschreiben lässt (Pfeiltasten funktionieren dort weiterhin).
+    if (e.key === "Tab" && !e.shiftKey) {
+      e.preventDefault();
+      est.focus();
+      est.select();
+      return;
+    }
+    if (e.key === "Escape") { e.preventDefault(); taskInput.blur(); }
+  });
+
+  est.addEventListener("keydown", (e) => {
+    if (e.key === "Tab" && e.shiftKey) { e.preventDefault(); focusTaskInput(); return; }
+    if (e.key === "Escape") { e.preventDefault(); est.blur(); }
+  });
+  // Klick/Fokus auf das Zahlenfeld markiert den Wert ebenfalls.
+  est.addEventListener("focus", () => est.select());
 
   document.getElementById("task-form").addEventListener("submit", (e) => {
     e.preventDefault();
@@ -1025,6 +1075,7 @@ function bindUI() {
     est.value = "1";
     saveTasks();
     renderTasks();
+    focusTaskInput();   // direkt weiterschreiben können
   });
 
   document.getElementById("btn-clear-done").addEventListener("click", () => {
@@ -1033,14 +1084,33 @@ function bindUI() {
     renderTasks();
   });
 
-  // Tastenkürzel
+  // Tastenkürzel (global – greifen nur außerhalb von Eingabefeldern)
+  const MODE_KEYS = { "1": "focus", "2": "short", "3": "long" };
+
   document.addEventListener("keydown", (e) => {
     const target = e.target;
-    if (target instanceof HTMLInputElement || target instanceof HTMLSelectElement || target instanceof HTMLTextAreaElement) return;
+    if (target instanceof HTMLInputElement || target instanceof HTMLSelectElement
+        || target instanceof HTMLTextAreaElement || target?.isContentEditable) return;
+    // Browser-/System-Kürzel (Strg+R, Cmd+S …) nicht kapern.
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
     if (document.querySelector("dialog[open]")) return;
-    if (e.code === "Space") { e.preventDefault(); startPause(); }
-    else if (e.key === "r" || e.key === "R") resetTimer();
-    else if (e.key === "s" || e.key === "S") skipSession();
+
+    const key = e.key.toLowerCase();
+    if (e.code === "Space") { e.preventDefault(); startPause(); return; }
+    if (MODE_KEYS[e.key]) {
+      e.preventDefault();
+      if (MODE_KEYS[e.key] !== timer.mode) switchMode(MODE_KEYS[e.key], { preserve: true });
+      return;
+    }
+    if (e.key === "ArrowRight") { e.preventDefault(); skipSession(); return; }
+    switch (key) {
+      case "r": e.preventDefault(); resetTimer(); break;
+      case "c": e.preventDefault(); resetCycle(); break;
+      case "n": e.preventDefault(); focusTaskInput({ select: true }); break;
+      case "s": e.preventDefault(); openDialog("stats-dialog"); break;
+      case "e": e.preventDefault(); openDialog("settings-dialog"); break;
+      case "?": e.preventDefault(); openDialog("shortcuts-dialog"); break;
+    }
   });
 }
 
@@ -1080,3 +1150,4 @@ updateWakeLock();
 renderTimer();
 renderTasks();
 initUpdateUI();
+focusTaskInputOnLaunch();

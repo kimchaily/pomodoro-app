@@ -32,9 +32,13 @@ Pomodoro-App als **PWA** (im Browser installierbar) und als **Android-App**
   ein zweispaltiges Layout (Timer links, Aufgaben rechts) mit zentrierten
   Dialogen – ideal für die PWA am Desktop
 - **Komfort**: Bildschirm-Wachhalten (während des Timers) oder „Display immer
-  an", Hell/Dunkel/Auto-Design, Tastenkürzel (Leertaste/R/S). Ein Tab-Wechsel
-  setzt den laufenden Timer nicht zurück – das geschieht nur über die
-  Zurücksetzen-Taste.
+  an", Hell/Dunkel/Auto-Design. Ein Tab-Wechsel setzt den laufenden Timer nicht
+  zurück – das geschieht nur über die Zurücksetzen-Taste.
+- **Tastatur**: Das Aufgabenfeld ist nach dem Start und nach jedem Hinzufügen
+  automatisch fokussiert, eine Leertaste als erstes Zeichen startet/pausiert den
+  Timer, <kbd>Tab</kbd> springt auf die markierte Pomodoro-Schätzung. Dazu
+  globale Kürzel (Leertaste, →, R, 1/2/3, N, C, S, E) – Übersicht mit
+  <kbd>?</kbd> oder über Einstellungen → „Tastenkürzel anzeigen".
 - **Offline**: Alle Daten bleiben lokal auf dem Gerät
 
 ## Android-APK bekommen
