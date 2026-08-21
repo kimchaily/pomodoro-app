@@ -37,7 +37,7 @@ Pomodoro-App als **PWA** (im Browser installierbar) und als **Android-App**
 - **Tastatur**: Das Aufgabenfeld ist nach dem Start und nach jedem Hinzufügen
   automatisch fokussiert, eine Leertaste als erstes Zeichen startet/pausiert den
   Timer, <kbd>Tab</kbd> springt auf die markierte Pomodoro-Schätzung. Dazu
-  globale Kürzel (Leertaste, R, S, 1/2/3, N, C, D, E) – Übersicht mit
+  globale Kürzel (Leertaste, →, R, 1/2/3, N, C, S, E) – Übersicht mit
   <kbd>?</kbd> oder über Einstellungen → „Tastenkürzel anzeigen".
 - **Offline**: Alle Daten bleiben lokal auf dem Gerät
 

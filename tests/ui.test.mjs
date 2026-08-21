@@ -279,9 +279,15 @@ try {
   check("settings button opens shortcut overview", await page.locator("#shortcuts-dialog").evaluate((d) => d.open), true);
   await page.click('.close-dialog[data-close="shortcuts-dialog"]');
 
-  await page.keyboard.press("d");
-  check("D opens statistics", await page.locator("#stats-dialog").evaluate((d) => d.open), true);
+  await page.keyboard.press("s");
+  check("S opens statistics", await page.locator("#stats-dialog").evaluate((d) => d.open), true);
   await page.click('.close-dialog[data-close="stats-dialog"]');
+
+  await page.click('.mode-tab[data-mode="focus"]');
+  const cycleDone = () => page.locator("#cycle-dots span.done").count();
+  const before = await cycleDone();
+  await page.keyboard.press("ArrowRight");
+  check("ArrowRight skips the session", await cycleDone(), before + 1);
 
   /* --- 3. Tomato icon assets served --- */
   for (const asset of ["icon.svg", "icon-192.png", "icon-512.png"]) {

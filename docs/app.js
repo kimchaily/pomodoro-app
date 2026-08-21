@@ -1102,12 +1102,12 @@ function bindUI() {
       if (MODE_KEYS[e.key] !== timer.mode) switchMode(MODE_KEYS[e.key], { preserve: true });
       return;
     }
+    if (e.key === "ArrowRight") { e.preventDefault(); skipSession(); return; }
     switch (key) {
       case "r": e.preventDefault(); resetTimer(); break;
-      case "s": e.preventDefault(); skipSession(); break;
       case "c": e.preventDefault(); resetCycle(); break;
       case "n": e.preventDefault(); focusTaskInput({ select: true }); break;
-      case "d": e.preventDefault(); openDialog("stats-dialog"); break;
+      case "s": e.preventDefault(); openDialog("stats-dialog"); break;
       case "e": e.preventDefault(); openDialog("settings-dialog"); break;
       case "?": e.preventDefault(); openDialog("shortcuts-dialog"); break;
     }
