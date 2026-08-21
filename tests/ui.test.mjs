@@ -8,6 +8,8 @@
  *   4. Color themes (Farbschemata) incl. per-mode shades and persistence
  *   5. Font selection (Schriftart) incl. inheritance and persistence
  *   6. Responsive layout: two columns on desktop, stacked on mobile
+ *   9. Task-field autofocus, space-to-start-timer, Tab to the estimate and
+ *      the global keyboard shortcuts
  *
  * Run it:
  *   npm install            # once, pulls in playwright (devDependency)
@@ -212,6 +214,74 @@ try {
   await page.reload({ waitUntil: "networkidle" });
   check("font persists after reload", await page.evaluate(() => document.body.dataset.font), "mono");
   check("font select restored after reload", await page.locator("#set-font").inputValue(), "mono");
+
+  /* --- 9. Autofokus & Tastenkürzel --- */
+  await page.reload({ waitUntil: "networkidle" });
+  const activeId = () => page.evaluate(() => document.activeElement?.id || "");
+  check("task input focused on launch", await activeId(), "task-input");
+
+  // Leertaste als erstes Zeichen startet/pausiert den Timer, statt zu tippen.
+  await page.locator("#task-input").press(" ");
+  check("space in empty field does not type", await page.locator("#task-input").inputValue(), "");
+  check("space in empty field starts timer", await page.textContent("#btn-start"), "Pause");
+  await page.locator("#task-input").press(" ");
+  check("space again pauses timer", await page.textContent("#btn-start"), "Start");
+
+  // Sobald etwas im Feld steht, ist die Leertaste ein normales Leerzeichen.
+  await page.locator("#task-input").type("Tief arbeiten");
+  check("space types normally after text", await page.locator("#task-input").inputValue(), "Tief arbeiten");
+  check("timer untouched while typing", await page.textContent("#btn-start"), "Start");
+
+  // Tab springt auf das Zahlenfeld und markiert den Wert – direkt überschreibbar.
+  await page.locator("#task-input").press("Tab");
+  check("tab moves to estimate", await activeId(), "task-est");
+  // Der Wert ist markiert: Tippen ersetzt ihn, statt ihn zu ergänzen.
+  // (selectionStart/-End liefern bei input[type=number] null – deshalb der
+  // funktionale Test statt einer Abfrage der Markierung.)
+  await page.keyboard.type("12");
+  check("typing overwrites the selected estimate", await page.locator("#task-est").inputValue(), "12");
+
+  // Pfeiltasten arbeiten weiterhin wie gewohnt.
+  await page.keyboard.press("ArrowUp");
+  check("arrow up still increments", await page.locator("#task-est").inputValue(), "13");
+  await page.keyboard.press("ArrowDown");
+  check("arrow down still decrements", await page.locator("#task-est").inputValue(), "12");
+
+  // Enter legt die Aufgabe an; danach steht der Cursor wieder im Aufgabenfeld.
+  await page.keyboard.press("Enter");
+  check("task added with typed estimate",
+    (await page.locator(".task-count").last().textContent())?.replace(/\s*🍅$/, ""), "0/12");
+  check("focus returns to task input after add", await activeId(), "task-input");
+  check("task input cleared after add", await page.locator("#task-input").inputValue(), "");
+
+  // Esc verlässt das Feld, danach greifen die globalen Kürzel wieder.
+  await page.keyboard.press("Escape");
+  check("escape blurs the task input", await activeId(), "");
+
+  await page.keyboard.press("2");
+  check("2 switches to short break", await page.evaluate(() => document.body.dataset.mode), "short");
+  await page.keyboard.press("1");
+  check("1 switches back to focus", await page.evaluate(() => document.body.dataset.mode), "focus");
+
+  await page.keyboard.press("n");
+  check("N focuses the task input", await activeId(), "task-input");
+  check("N does not type into the field", await page.locator("#task-input").inputValue(), "");
+  await page.keyboard.press("Escape");
+
+  await page.keyboard.press("?");
+  check("? opens the shortcut overview", await page.locator("#shortcuts-dialog").evaluate((d) => d.open), true);
+  await page.keyboard.press("Escape");
+  check("escape closes the shortcut overview", await page.locator("#shortcuts-dialog").evaluate((d) => d.open), false);
+
+  await page.keyboard.press("e");
+  check("E opens settings", await page.locator("#settings-dialog").evaluate((d) => d.open), true);
+  await page.click("#btn-shortcuts");
+  check("settings button opens shortcut overview", await page.locator("#shortcuts-dialog").evaluate((d) => d.open), true);
+  await page.click('.close-dialog[data-close="shortcuts-dialog"]');
+
+  await page.keyboard.press("d");
+  check("D opens statistics", await page.locator("#stats-dialog").evaluate((d) => d.open), true);
+  await page.click('.close-dialog[data-close="stats-dialog"]');
 
   /* --- 3. Tomato icon assets served --- */
   for (const asset of ["icon.svg", "icon-192.png", "icon-512.png"]) {
