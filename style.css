@@ -325,6 +325,32 @@ body.dragging-task { cursor: grabbing; user-select: none; }
 .muted { color: var(--muted); font-size: .85rem; }
 .hint { margin-top: 18px; }
 
+/* Tastenkürzel-Übersicht */
+.keys {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 8px 14px;
+  align-items: baseline;
+  margin: 0;
+}
+.keys dt { justify-self: start; display: flex; gap: 4px; flex-wrap: wrap; }
+.keys dd { margin: 0; color: var(--muted); }
+kbd {
+  display: inline-block;
+  min-width: 1.6em;
+  padding: 2px 7px;
+  border: 1px solid var(--ring-track);
+  border-bottom-width: 2px;
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+  font-family: inherit;
+  font-size: .8rem;
+  line-height: 1.5;
+  text-align: center;
+  white-space: nowrap;
+}
+
 .update-btn {
   display: block;
   width: 100%;

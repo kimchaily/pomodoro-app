@@ -45,7 +45,7 @@
       <div class="controls">
         <button id="btn-reset" class="ctrl-btn small" title="Zurücksetzen (R)">↺</button>
         <button id="btn-start" class="ctrl-btn primary" title="Start/Pause (Leertaste)">Start</button>
-        <button id="btn-skip" class="ctrl-btn small" title="Überspringen (S)">⏭</button>
+        <button id="btn-skip" class="ctrl-btn small" title="Überspringen (→)">⏭</button>
       </div>
 
       <div class="active-task" id="active-task-display" hidden>
@@ -167,7 +167,46 @@
       <button id="btn-install-update" class="update-btn" type="button" hidden>⬇️ Update herunterladen &amp; installieren</button>
     </div>
 
-    <p class="muted hint">Tastenkürzel: Leertaste = Start/Pause · R = Zurücksetzen · S = Überspringen</p>
+    <p class="hint"><button id="btn-shortcuts" class="text-btn" type="button">⌨️ Tastenkürzel anzeigen</button></p>
+  </dialog>
+
+
+  <!-- Tastenkürzel -->
+  <dialog id="shortcuts-dialog" class="sheet">
+    <div class="sheet-head">
+      <h2>⌨️ Tastenkürzel</h2>
+      <button class="icon-btn close-dialog" data-close="shortcuts-dialog" aria-label="Schließen">✕</button>
+    </div>
+
+    <h3>Timer</h3>
+    <dl class="keys">
+      <dt><kbd>Leertaste</kbd></dt><dd>Start / Pause</dd>
+      <dt><kbd>R</kbd></dt><dd>Zurücksetzen</dd>
+      <dt><kbd>→</kbd></dt><dd>Überspringen</dd>
+      <dt><kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd></dt><dd>Fokus / Kurze Pause / Lange Pause</dd>
+      <dt><kbd>C</kbd></dt><dd>Pomodoro-Zähler zurücksetzen</dd>
+    </dl>
+
+    <h3>Aufgaben</h3>
+    <dl class="keys">
+      <dt><kbd>N</kbd></dt><dd>Neue Aufgabe – springt ins Eingabefeld</dd>
+      <dt><kbd>Enter</kbd></dt><dd>Aufgabe hinzufügen</dd>
+      <dt><kbd>Leertaste</kbd></dt><dd>Als erstes Zeichen im Aufgabenfeld: Start / Pause</dd>
+      <dt><kbd>Tab</kbd></dt><dd>Vom Aufgabenfeld zur Pomodoro-Schätzung (Wert ist markiert)</dd>
+      <dt><kbd>↑</kbd> <kbd>↓</kbd></dt><dd>Schätzung erhöhen / verringern</dd>
+      <dt><kbd>Esc</kbd></dt><dd>Eingabefeld verlassen</dd>
+    </dl>
+
+    <h3>Ansicht</h3>
+    <dl class="keys">
+      <dt><kbd>S</kbd></dt><dd>Statistik öffnen</dd>
+      <dt><kbd>E</kbd></dt><dd>Einstellungen öffnen</dd>
+      <dt><kbd>?</kbd></dt><dd>Diese Übersicht</dd>
+      <dt><kbd>Esc</kbd></dt><dd>Dialog schließen</dd>
+    </dl>
+
+    <p class="muted hint">Buchstaben-Kürzel wirken, solange der Cursor nicht in einem
+      Eingabefeld steht – mit <kbd>Esc</kbd> verlässt du das Feld.</p>
   </dialog>
 
   <script src="app.js"></script>
