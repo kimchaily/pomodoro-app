@@ -366,6 +366,43 @@ function saveTasks() { store.save("pomo.tasks", tasks); }
 // id der Aufgabe, deren Titel gerade inline bearbeitet wird (oder null).
 let editingTaskId = null;
 
+// Einfügeposition für die nächste Aufgabe (Pfeiltasten im Aufgabenfeld
+// verschieben sie); null = noch nicht festgelegt – Feld ist leer oder gerade
+// erst befüllt worden, dann gilt beim nächsten Tastendruck der Standard.
+let insertIndex = null;
+
+// Standardposition: direkt unter der aktuell ausgewählten Aufgabe, sonst ans Ende.
+function computeDefaultInsertIndex() {
+  const i = tasks.findIndex((t) => t.active && !t.done);
+  return i === -1 ? tasks.length : i + 1;
+}
+
+function clampInsertIndex(i) {
+  return Math.max(0, Math.min(tasks.length, i));
+}
+
+// Legt eine neue Aufgabe aus dem Aufgabenfeld an der gegebenen Position an.
+function addTask(index) {
+  const input = document.getElementById("task-input");
+  const est = document.getElementById("task-est");
+  const title = input.value.trim();
+  if (!title) return;
+  tasks.splice(clampInsertIndex(index), 0, {
+    id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+    title,
+    est: Math.min(20, Math.max(1, Number(est.value) || 1)),
+    done: false,
+    donePomos: 0,
+    active: tasks.every((t) => !t.active),
+  });
+  input.value = "";
+  est.value = "1";
+  insertIndex = null;
+  saveTasks();
+  renderTasks();
+  focusTaskInput();   // direkt weiterschreiben können
+}
+
 function creditActiveTask() {
   const task = tasks.find((t) => t.active && !t.done);
   if (task) {
@@ -393,7 +430,9 @@ function bindTaskDrag(handle, li) {
 
     const onMove = (ev) => {
       if (ev.pointerId !== pointerId) return;
-      const others = [...list.children].filter((el) => el !== li);
+      // Nur echte Aufgaben zählen bei der Positionsbestimmung – die
+      // Einfüge-Trennlinie (falls gerade sichtbar) ist kein Sortierziel.
+      const others = [...list.querySelectorAll(":scope > .task-item")].filter((el) => el !== li);
       let before = null;
       for (const el of others) {
         const rect = el.getBoundingClientRect();
@@ -401,8 +440,9 @@ function bindTaskDrag(handle, li) {
       }
       if (before) {
         if (before !== li.nextSibling) list.insertBefore(li, before);
-      } else if (li !== list.lastElementChild) {
-        list.appendChild(li);
+      } else {
+        const lastOther = others[others.length - 1];
+        if (!lastOther || li !== lastOther.nextSibling) list.appendChild(li);
       }
     };
 
@@ -415,7 +455,7 @@ function bindTaskDrag(handle, li) {
       li.classList.remove("dragging");
       document.body.classList.remove("dragging-task");
       // Neue Reihenfolge aus dem DOM in das tasks-Array übernehmen.
-      const order = [...list.children].map((el) => el.dataset.id);
+      const order = [...list.querySelectorAll(":scope > .task-item")].map((el) => el.dataset.id);
       tasks.sort((a, b) => order.indexOf(a.id) - order.indexOf(b.id));
       saveTasks();
       renderTasks();
@@ -439,7 +479,18 @@ function renderTasks() {
     list.innerHTML = "";
     let focusInput = null;
 
-    for (const task of tasks) {
+    const showInsertMark = insertIndex !== null;
+    const markAt = showInsertMark ? clampInsertIndex(insertIndex) : -1;
+    const insertMark = () => {
+      const mark = document.createElement("li");
+      mark.className = "task-insert-indicator";
+      mark.setAttribute("aria-hidden", "true");
+      return mark;
+    };
+
+    tasks.forEach((task, i) => {
+      if (showInsertMark && i === markAt) list.append(insertMark());
+
       const li = document.createElement("li");
       li.className = "task-item" + (task.active ? " active" : "") + (task.done ? " done" : "");
       li.dataset.id = task.id;
@@ -536,7 +587,8 @@ function renderTasks() {
         renderTasks();
       });
       list.append(li);
-    }
+    });
+    if (showInsertMark && markAt === tasks.length) list.append(insertMark());
 
     document.getElementById("task-empty").hidden = tasks.length > 0;
     document.getElementById("task-footer").hidden = !tasks.some((t) => t.done);
@@ -1047,7 +1099,35 @@ function bindUI() {
       est.select();
       return;
     }
+    // Sobald etwas im Feld steht: Pfeil rauf/runter verschiebt die
+    // Einfügeposition der neuen Aufgabe (als Trennlinie sichtbar).
+    if ((e.key === "ArrowUp" || e.key === "ArrowDown") && taskInput.value.trim() !== "") {
+      e.preventDefault();
+      if (insertIndex === null) insertIndex = computeDefaultInsertIndex();
+      insertIndex = clampInsertIndex(insertIndex + (e.key === "ArrowDown" ? 1 : -1));
+      renderTasks();
+      return;
+    }
+    // Enter fügt an der markierten Position ein; Strg+Enter immer zuunterst
+    // (wie bisher), Umschalt+Enter immer zuoberst.
+    if (e.key === "Enter") {
+      e.preventDefault();
+      if (e.ctrlKey || e.metaKey) addTask(tasks.length);
+      else if (e.shiftKey) addTask(0);
+      else addTask(insertIndex ?? computeDefaultInsertIndex());
+      return;
+    }
     if (e.key === "Escape") { e.preventDefault(); taskInput.blur(); }
+  });
+
+  // Einfügeposition initialisieren, sobald das Feld beschrieben wird, und
+  // wieder zurücksetzen, wenn es leer gemacht wird (Trennlinie verschwindet).
+  taskInput.addEventListener("input", () => {
+    if (taskInput.value.trim() === "") {
+      if (insertIndex !== null) { insertIndex = null; renderTasks(); }
+      return;
+    }
+    if (insertIndex === null) { insertIndex = computeDefaultInsertIndex(); renderTasks(); }
   });
 
   est.addEventListener("keydown", (e) => {
@@ -1057,25 +1137,11 @@ function bindUI() {
   // Klick/Fokus auf das Zahlenfeld markiert den Wert ebenfalls.
   est.addEventListener("focus", () => est.select());
 
+  // "+"-Button: fügt an derselben Position ein, die gerade als Trennlinie
+  // markiert ist (Enter im Feld selbst wird oben separat behandelt).
   document.getElementById("task-form").addEventListener("submit", (e) => {
     e.preventDefault();
-    const input = document.getElementById("task-input");
-    const est = document.getElementById("task-est");
-    const title = input.value.trim();
-    if (!title) return;
-    tasks.push({
-      id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
-      title,
-      est: Math.min(20, Math.max(1, Number(est.value) || 1)),
-      done: false,
-      donePomos: 0,
-      active: tasks.every((t) => !t.active),
-    });
-    input.value = "";
-    est.value = "1";
-    saveTasks();
-    renderTasks();
-    focusTaskInput();   // direkt weiterschreiben können
+    addTask(insertIndex ?? computeDefaultInsertIndex());
   });
 
   document.getElementById("btn-clear-done").addEventListener("click", () => {
