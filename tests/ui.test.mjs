@@ -10,6 +10,7 @@
  *   6. Responsive layout: two columns on desktop, stacked on mobile
  *   9. Task-field autofocus, space-to-start-timer, Tab to the estimate and
  *      the global keyboard shortcuts
+ *  10. Insert-position picker for new tasks (arrows + Enter/Ctrl+Enter/Shift+Enter)
  *
  * Run it:
  *   npm install            # once, pulls in playwright (devDependency)
@@ -288,6 +289,108 @@ try {
   const before = await cycleDone();
   await page.keyboard.press("ArrowRight");
   check("ArrowRight skips the session", await cycleDone(), before + 1);
+
+  /* --- 10. Einfügeposition für neue Aufgaben --- */
+  await page.evaluate(() => localStorage.clear());
+  await page.reload({ waitUntil: "networkidle" });
+
+  const titles = () => page.locator("#task-list .task-item .task-title").allTextContents();
+  const checkTitles = async (name, expected) => check(name, (await titles()).join(" | "), expected.join(" | "));
+  // Liefert, welche Aufgabe vor/nach der Trennlinie steht (null = Rand der Liste).
+  const indicatorNeighbors = () => page.evaluate(() => {
+    const list = document.getElementById("task-list");
+    const children = [...list.children];
+    const idx = children.findIndex((el) => el.classList.contains("task-insert-indicator"));
+    if (idx === -1) return { present: false, before: null, after: null };
+    const prevItem = children.slice(0, idx).reverse().find((el) => el.classList.contains("task-item"));
+    const nextItem = children.slice(idx + 1).find((el) => el.classList.contains("task-item"));
+    return {
+      present: true,
+      before: prevItem ? prevItem.querySelector(".task-title")?.textContent : null,
+      after: nextItem ? nextItem.querySelector(".task-title")?.textContent : null,
+    };
+  });
+
+  // Pfeiltasten im leeren Feld: keine Trennlinie, kein Effekt.
+  await page.keyboard.press("ArrowDown");
+  check("no indicator while field is empty", await page.locator(".task-insert-indicator").count(), 0);
+
+  // Erste Aufgabe: Enter ohne Modifier (Liste ist leer → landet ohnehin ganz unten).
+  await page.locator("#task-input").type("Alpha");
+  await page.keyboard.press("Enter");
+  await checkTitles("first task added", ["Alpha"]);
+
+  // Zweite Aufgabe bewusst ganz unten einfügen (Strg+Enter).
+  await page.locator("#task-input").type("Beta");
+  await page.keyboard.press("Control+Enter");
+  await checkTitles("ctrl+enter appends at the bottom", ["Alpha", "Beta"]);
+
+  // Dritte Aufgabe bewusst ganz oben einfügen (Umschalt+Enter).
+  await page.locator("#task-input").type("Gamma");
+  await page.keyboard.press("Shift+Enter");
+  await checkTitles("shift+enter inserts at the top", ["Gamma", "Alpha", "Beta"]);
+
+  // Alpha ist weiterhin die aktive Aufgabe → Standardposition ist direkt darunter.
+  await page.locator("#task-input").type("Delta");
+  let n = await indicatorNeighbors();
+  check("indicator present once text is typed", n.present, true);
+  check("default position sits right below the active task (before)", n.before, "Alpha");
+  check("default position sits right below the active task (after)", n.after, "Beta");
+
+  // Einmal rauf: zwischen Gamma und Alpha.
+  await page.keyboard.press("ArrowUp");
+  n = await indicatorNeighbors();
+  check("arrow up moves the indicator before Alpha (before)", n.before, "Gamma");
+  check("arrow up moves the indicator before Alpha (after)", n.after, "Alpha");
+
+  // Nochmal rauf: ganz oben, vor Gamma.
+  await page.keyboard.press("ArrowUp");
+  n = await indicatorNeighbors();
+  check("second arrow up reaches the very top (before)", n.before, null);
+  check("second arrow up reaches the very top (after)", n.after, "Gamma");
+
+  // Am oberen Rand: weiteres Rauf bleibt dort (geklemmt).
+  await page.keyboard.press("ArrowUp");
+  n = await indicatorNeighbors();
+  check("arrow up clamps at the top", n.before, null);
+
+  // Viermal runter: einmal zu viel, bleibt unten geklemmt (ganz unten, nach Beta).
+  for (let i = 0; i < 4; i++) await page.keyboard.press("ArrowDown");
+  n = await indicatorNeighbors();
+  check("arrow down clamps at the bottom", n.after, null);
+  check("arrow down clamps at the bottom (before)", n.before, "Beta");
+
+  // Zweimal rauf: zwischen Gamma und Alpha – dort mit Enter einfügen.
+  await page.keyboard.press("ArrowUp");
+  await page.keyboard.press("ArrowUp");
+  n = await indicatorNeighbors();
+  check("back to the marked slot before Enter (before)", n.before, "Gamma");
+  check("back to the marked slot before Enter (after)", n.after, "Alpha");
+  await page.keyboard.press("Enter");
+  await checkTitles("enter inserts at the marked position", ["Gamma", "Delta", "Alpha", "Beta"]);
+  check("indicator hidden again after insert", await page.locator(".task-insert-indicator").count(), 0);
+
+  // Frischer Standard nach dem Einfügen: wieder direkt unter Alpha (jetzt an Index 2).
+  await page.locator("#task-input").type("Epsilon");
+  n = await indicatorNeighbors();
+  check("default resets below the active task after insert (before)", n.before, "Alpha");
+  check("default resets below the active task after insert (after)", n.after, "Beta");
+  // Strg+Enter überstimmt die markierte Position und hängt trotzdem ganz unten an.
+  await page.keyboard.press("Control+Enter");
+  await checkTitles("ctrl+enter still overrides the marked position", ["Gamma", "Delta", "Alpha", "Beta", "Epsilon"]);
+
+  // Umschalt+Enter überstimmt die markierte Position ebenso und setzt ganz oben.
+  await page.locator("#task-input").type("Zeta");
+  await page.keyboard.press("Shift+Enter");
+  check("shift+enter still overrides the marked position", (await titles())[0], "Zeta");
+
+  // Der "+"-Button folgt derselben markierten Position wie Enter.
+  await page.locator("#task-input").type("Eta");
+  n = await indicatorNeighbors();
+  await page.click(".add-btn");
+  await checkTitles("the + button inserts at the same marked position", [
+    "Zeta", "Gamma", "Delta", "Alpha", "Eta", "Beta", "Epsilon",
+  ]);
 
   /* --- 3. Tomato icon assets served --- */
   for (const asset of ["icon.svg", "icon-192.png", "icon-512.png"]) {
