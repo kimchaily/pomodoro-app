@@ -38,12 +38,12 @@ Pomodoro-App als **PWA** (im Browser installierbar) und als **Android-App**
   automatisch fokussiert, eine Leertaste als erstes Zeichen startet/pausiert den
   Timer, <kbd>Tab</kbd> springt auf die markierte Pomodoro-Schätzung. Steht
   Text im Feld, verschieben <kbd>↑</kbd>/<kbd>↓</kbd> die Einfügeposition der
-  neuen Aufgabe (als Trennlinie markiert, standardmäßig unter der aktuell
-  ausgewählten Aufgabe) – <kbd>Enter</kbd> fügt dort ein,
-  <kbd>Umschalt</kbd>+<kbd>Enter</kbd> immer ganz oben,
-  <kbd>Strg</kbd>+<kbd>Enter</kbd> immer ganz unten. Dazu globale Kürzel
-  (Leertaste, →, R, 1/2/3, N, C, S, E) – Übersicht mit <kbd>?</kbd> oder über
-  Einstellungen → „Tastenkürzel anzeigen".
+  neuen Aufgabe (als Trennlinie markiert, standardmäßig über der aktuell
+  ausgewählten Aufgabe – in den Einstellungen umstellbar auf darunter) –
+  <kbd>Enter</kbd> fügt dort ein, <kbd>Umschalt</kbd>+<kbd>Enter</kbd> immer
+  ganz oben, <kbd>Strg</kbd>+<kbd>Enter</kbd> immer ganz unten. Dazu globale
+  Kürzel (Leertaste, →, R, 1/2/3, N, C, S, E) – Übersicht direkt über das
+  Tastatur-Symbol in der Kopfzeile oder mit <kbd>?</kbd>.
 - **Offline**: Alle Daten bleiben lokal auf dem Gerät
 
 ## Android-APK bekommen
