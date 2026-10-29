@@ -135,15 +135,18 @@ try {
   await page.mouse.move(hb.x + hb.width / 2, secondBox.y + secondBox.height / 2 + 4, { steps: 6 });
   await page.mouse.move(hb.x + hb.width / 2, secondBox.y + secondBox.height + 8, { steps: 4 });
   await page.mouse.up();
+  // Mit der neuen Standard-Einfügeposition (über der aktiven Aufgabe) landet
+  // "Zweite Aufgabe" beim Anlegen vor der aktiven "Testaufgabe" – der Zug
+  // tauscht sie wieder dahinter, sodass vorn die unbearbeitete "Testaufgabe" steht.
   check("drag moves first task below second",
     await page.locator(".task-item").first().locator(".task-title").textContent(),
-    "Zweite Aufgabe");
+    "Testaufgabe");
 
   // Bearbeitung und Reihenfolge überstehen ein Neuladen.
   await page.reload({ waitUntil: "networkidle" });
   check("reorder persists after reload",
     await page.locator(".task-item").first().locator(".task-title").textContent(),
-    "Zweite Aufgabe");
+    "Testaufgabe");
   check("edited title persists after reload",
     await page.locator(".task-item").nth(1).locator(".task-title").textContent(),
     "Testaufgabe bearbeitet");
@@ -249,9 +252,11 @@ try {
   check("arrow down still decrements", await page.locator("#task-est").inputValue(), "12");
 
   // Enter legt die Aufgabe an; danach steht der Cursor wieder im Aufgabenfeld.
+  // Standard-Einfügeposition ist über der aktiven Aufgabe → die neue Aufgabe
+  // landet vorn in der Liste, nicht hinten.
   await page.keyboard.press("Enter");
   check("task added with typed estimate",
-    (await page.locator(".task-count").last().textContent())?.replace(/\s*🍅$/, ""), "0/12");
+    (await page.locator(".task-count").first().textContent())?.replace(/\s*🍅$/, ""), "0/12");
   check("focus returns to task input after add", await activeId(), "task-input");
   check("task input cleared after add", await page.locator("#task-input").inputValue(), "");
 
@@ -276,8 +281,11 @@ try {
 
   await page.keyboard.press("e");
   check("E opens settings", await page.locator("#settings-dialog").evaluate((d) => d.open), true);
+  await page.click('.close-dialog[data-close="settings-dialog"]');
+
+  // Direkt von der Hauptseite erreichbar, nicht mehr nur über die Einstellungen.
   await page.click("#btn-shortcuts");
-  check("settings button opens shortcut overview", await page.locator("#shortcuts-dialog").evaluate((d) => d.open), true);
+  check("topbar button opens shortcut overview", await page.locator("#shortcuts-dialog").evaluate((d) => d.open), true);
   await page.click('.close-dialog[data-close="shortcuts-dialog"]');
 
   await page.keyboard.press("s");
@@ -330,24 +338,18 @@ try {
   await page.keyboard.press("Shift+Enter");
   await checkTitles("shift+enter inserts at the top", ["Gamma", "Alpha", "Beta"]);
 
-  // Alpha ist weiterhin die aktive Aufgabe → Standardposition ist direkt darunter.
+  // Alpha ist weiterhin die aktive Aufgabe → Standard ist jetzt DARÜBER (neuer Default).
   await page.locator("#task-input").type("Delta");
   let n = await indicatorNeighbors();
   check("indicator present once text is typed", n.present, true);
-  check("default position sits right below the active task (before)", n.before, "Alpha");
-  check("default position sits right below the active task (after)", n.after, "Beta");
+  check("default position sits right above the active task (before)", n.before, "Gamma");
+  check("default position sits right above the active task (after)", n.after, "Alpha");
 
-  // Einmal rauf: zwischen Gamma und Alpha.
+  // Rauf: ganz oben, vor Gamma.
   await page.keyboard.press("ArrowUp");
   n = await indicatorNeighbors();
-  check("arrow up moves the indicator before Alpha (before)", n.before, "Gamma");
-  check("arrow up moves the indicator before Alpha (after)", n.after, "Alpha");
-
-  // Nochmal rauf: ganz oben, vor Gamma.
-  await page.keyboard.press("ArrowUp");
-  n = await indicatorNeighbors();
-  check("second arrow up reaches the very top (before)", n.before, null);
-  check("second arrow up reaches the very top (after)", n.after, "Gamma");
+  check("arrow up reaches the very top (before)", n.before, null);
+  check("arrow up reaches the very top (after)", n.after, "Gamma");
 
   // Am oberen Rand: weiteres Rauf bleibt dort (geklemmt).
   await page.keyboard.press("ArrowUp");
@@ -360,24 +362,24 @@ try {
   check("arrow down clamps at the bottom", n.after, null);
   check("arrow down clamps at the bottom (before)", n.before, "Beta");
 
-  // Zweimal rauf: zwischen Gamma und Alpha – dort mit Enter einfügen.
-  await page.keyboard.press("ArrowUp");
+  // Einmal rauf: zwischen Alpha und Beta – bewusst UNTER der aktiven Aufgabe,
+  // zum Beweis, dass sich die Markierung frei vom Standard wegbewegen lässt.
   await page.keyboard.press("ArrowUp");
   n = await indicatorNeighbors();
-  check("back to the marked slot before Enter (before)", n.before, "Gamma");
-  check("back to the marked slot before Enter (after)", n.after, "Alpha");
+  check("back to a manually chosen slot before Enter (before)", n.before, "Alpha");
+  check("back to a manually chosen slot before Enter (after)", n.after, "Beta");
   await page.keyboard.press("Enter");
-  await checkTitles("enter inserts at the marked position", ["Gamma", "Delta", "Alpha", "Beta"]);
+  await checkTitles("enter inserts at the marked position", ["Gamma", "Alpha", "Delta", "Beta"]);
   check("indicator hidden again after insert", await page.locator(".task-insert-indicator").count(), 0);
 
-  // Frischer Standard nach dem Einfügen: wieder direkt unter Alpha (jetzt an Index 2).
+  // Frischer Standard nach dem Einfügen: wieder direkt über Alpha (jetzt an Index 1).
   await page.locator("#task-input").type("Epsilon");
   n = await indicatorNeighbors();
-  check("default resets below the active task after insert (before)", n.before, "Alpha");
-  check("default resets below the active task after insert (after)", n.after, "Beta");
+  check("default resets above the active task after insert (before)", n.before, "Gamma");
+  check("default resets above the active task after insert (after)", n.after, "Alpha");
   // Strg+Enter überstimmt die markierte Position und hängt trotzdem ganz unten an.
   await page.keyboard.press("Control+Enter");
-  await checkTitles("ctrl+enter still overrides the marked position", ["Gamma", "Delta", "Alpha", "Beta", "Epsilon"]);
+  await checkTitles("ctrl+enter still overrides the marked position", ["Gamma", "Alpha", "Delta", "Beta", "Epsilon"]);
 
   // Umschalt+Enter überstimmt die markierte Position ebenso und setzt ganz oben.
   await page.locator("#task-input").type("Zeta");
@@ -389,8 +391,31 @@ try {
   n = await indicatorNeighbors();
   await page.click(".add-btn");
   await checkTitles("the + button inserts at the same marked position", [
-    "Zeta", "Gamma", "Delta", "Alpha", "Eta", "Beta", "Epsilon",
+    "Zeta", "Gamma", "Eta", "Alpha", "Delta", "Beta", "Epsilon",
   ]);
+
+  /* --- 11. Einstellung: Einfügeposition über/unter der aktiven Aufgabe --- */
+  await page.click("#btn-settings");
+  check("new default is checked (above active)", await page.locator("#set-insert-above").isChecked(), true);
+  await page.locator("#set-insert-above").uncheck();
+  await page.click('.close-dialog[data-close="settings-dialog"]');
+
+  // Alpha ist unverändert aktiv (jetzt an Index 3) – mit der Einstellung aus
+  // greift wieder die alte Standardposition: direkt DARUNTER.
+  await page.locator("#task-input").type("Theta");
+  n = await indicatorNeighbors();
+  check("default follows the setting back to below the active task (before)", n.before, "Alpha");
+  check("default follows the setting back to below the active task (after)", n.after, "Delta");
+  await page.keyboard.press("Enter");
+  await checkTitles("task lands below the active task with the setting off", [
+    "Zeta", "Gamma", "Eta", "Alpha", "Theta", "Delta", "Beta", "Epsilon",
+  ]);
+
+  // Die Einstellung übersteht ein Neuladen.
+  await page.reload({ waitUntil: "networkidle" });
+  await page.click("#btn-settings");
+  check("setting persists after reload", await page.locator("#set-insert-above").isChecked(), false);
+  await page.click('.close-dialog[data-close="settings-dialog"]');
 
   /* --- 3. Tomato icon assets served --- */
   for (const asset of ["icon.svg", "icon-192.png", "icon-512.png"]) {

@@ -18,6 +18,7 @@
     <div class="topbar-actions">
       <button id="btn-install" class="icon-btn" hidden title="App installieren">⬇️</button>
       <button id="btn-stats" class="icon-btn" title="Statistik" aria-label="Statistik">📊</button>
+      <button id="btn-shortcuts" class="icon-btn" title="Tastenkürzel (?)" aria-label="Tastenkürzel">⌨️</button>
       <button id="btn-settings" class="icon-btn" title="Einstellungen" aria-label="Einstellungen">⚙️</button>
     </div>
   </header>
@@ -108,6 +109,9 @@
     <div class="setting-row"><label for="set-auto-breaks">Pausen automatisch starten</label><input type="checkbox" id="set-auto-breaks"></div>
     <div class="setting-row"><label for="set-auto-focus">Fokus automatisch starten</label><input type="checkbox" id="set-auto-focus"></div>
 
+    <h3>Aufgaben</h3>
+    <div class="setting-row"><label for="set-insert-above">Neue Aufgabe über der aktuellen einfügen (statt darunter)</label><input type="checkbox" id="set-insert-above"></div>
+
     <h3>Ton &amp; Signale</h3>
     <div class="setting-row"><label for="set-sound">Klang</label>
       <select id="set-sound">
@@ -166,8 +170,6 @@
       </div>
       <button id="btn-install-update" class="update-btn" type="button" hidden>⬇️ Update herunterladen &amp; installieren</button>
     </div>
-
-    <p class="hint"><button id="btn-shortcuts" class="text-btn" type="button">⌨️ Tastenkürzel anzeigen</button></p>
   </dialog>
 
 

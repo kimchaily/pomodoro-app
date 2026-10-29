@@ -27,6 +27,7 @@ const DEFAULT_SETTINGS = {
   notify: true, vibrate: true,
   wakeLock: false, alwaysOn: false, theme: "auto", colorTheme: "classic",
   font: "system",
+  insertAboveActive: true,
 };
 
 let settings = store.load("pomo.settings", DEFAULT_SETTINGS);
@@ -371,10 +372,12 @@ let editingTaskId = null;
 // erst befüllt worden, dann gilt beim nächsten Tastendruck der Standard.
 let insertIndex = null;
 
-// Standardposition: direkt unter der aktuell ausgewählten Aufgabe, sonst ans Ende.
+// Standardposition: direkt neben der aktuell ausgewählten Aufgabe (ob darüber
+// oder darunter, legt die Einstellung "insertAboveActive" fest), sonst ans Ende.
 function computeDefaultInsertIndex() {
   const i = tasks.findIndex((t) => t.active && !t.done);
-  return i === -1 ? tasks.length : i + 1;
+  if (i === -1) return tasks.length;
+  return settings.insertAboveActive ? i : i + 1;
 }
 
 function clampInsertIndex(i) {
@@ -935,6 +938,7 @@ const settingBindings = [
   ["set-long-every", "longEvery", "number"],
   ["set-auto-breaks", "autoStartBreaks", "checkbox"],
   ["set-auto-focus", "autoStartFocus", "checkbox"],
+  ["set-insert-above", "insertAboveActive", "checkbox"],
   ["set-sound", "sound", "select"],
   ["set-volume", "volume", "number"],
   ["set-tick", "tick", "checkbox"],
@@ -1051,11 +1055,8 @@ function bindUI() {
 
   // Dialoge
   document.getElementById("btn-stats").addEventListener("click", () => openDialog("stats-dialog"));
+  document.getElementById("btn-shortcuts").addEventListener("click", () => openDialog("shortcuts-dialog"));
   document.getElementById("btn-settings").addEventListener("click", () => openDialog("settings-dialog"));
-  document.getElementById("btn-shortcuts").addEventListener("click", () => {
-    document.getElementById("settings-dialog").close();
-    openDialog("shortcuts-dialog");
-  });
   document.querySelectorAll(".close-dialog").forEach((btn) => {
     btn.addEventListener("click", () => document.getElementById(btn.dataset.close).close());
   });
