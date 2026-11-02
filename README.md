@@ -16,7 +16,10 @@ Pomodoro-App als **PWA** (im Browser installierbar) und als **Android-App**
   und öffnet den System-Installer. Der CI-Build backt dafür `version.json` mit
   Commit und Build-Zeit in die APK ein.
 - **Aufgaben**: Liste mit geschätzten Pomodoros, aktive Aufgabe wird
-  automatisch hochgezählt
+  automatisch hochgezählt; Titel und Schätzung lassen sich nachträglich
+  bearbeiten (✏️, <kbd>Enter</kbd> oder <kbd>F2</kbd>). Außerhalb der Felder
+  wählt <kbd>↑</kbd>/<kbd>↓</kbd> die vorherige/nächste Aufgabe als Fokus,
+  <kbd>X</kbd> schaltet sie auf erledigt bzw. wieder offen
 - **Statistik**: Heute / Woche / Gesamt, Tagesserie (Streak),
   7-Tage-Diagramm, Fokusminuten
 - **Signale**: Benachrichtigungen, Vibration, 3 Klangthemen mit Lautstärke,
@@ -24,7 +27,8 @@ Pomodoro-App als **PWA** (im Browser installierbar) und als **Android-App**
 - **Farbschemata**: Neben dem klassischen Design fünf vollflächige Themes
   (Honig, Rosé, Salbei, Ozean, Schiefer) mit weißen Elementen auf Farbfläche;
   die Farbe variiert je Modus (Fokus / kurze / lange Pause), die Statusleiste
-  färbt sich passend mit
+  färbt sich passend mit. Die Symbole oben rechts folgen dem Theme – farbig in
+  der Akzentfarbe oder (Einstellung) einfarbig in der Textfarbe
 - **Schriftarten**: fünf Stile zur Auswahl (Standard, Elegant/Serif, Leicht,
   Schmal, Nerdy/Mono) – reine System-Fonts, damit die App offline bleibt und
   auf jedem Gerät ohne Download passt
@@ -46,7 +50,7 @@ Pomodoro-App als **PWA** (im Browser installierbar) und als **Android-App**
   währenddessen eine andere Aufgabe ausgewählt, wandert die Linie mit) –
   <kbd>Enter</kbd> fügt dort ein, <kbd>Umschalt</kbd>+<kbd>Enter</kbd> immer
   ganz oben, <kbd>Strg</kbd>+<kbd>Enter</kbd> immer ganz unten. Dazu globale
-  Kürzel (Leertaste, →, R, 1/2/3, N, C, S, E, W) – Übersicht direkt über das
+  Kürzel (Leertaste, →, ↑/↓, X, R, 1/2/3, N, C, S, E, W) – Übersicht direkt über das
   Tastatur-Symbol in der Kopfzeile oder mit <kbd>?</kbd>.
 - **Offline**: Alle Daten bleiben lokal auf dem Gerät
 
