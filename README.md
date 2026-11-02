@@ -30,7 +30,10 @@ Pomodoro-App als **PWA** (im Browser installierbar) und als **Android-App**
   auf jedem Gerät ohne Download passt
 - **Responsive**: mobil die gewohnte schmale Spalte, ab Tablet-/Desktop-Breite
   ein zweispaltiges Layout (Timer links, Aufgaben rechts) mit zentrierten
-  Dialogen – ideal für die PWA am Desktop
+  Dialogen – ideal für die PWA am Desktop. Dort lässt sich die Inhaltsbreite
+  über das ↔️-Symbol oben rechts umschalten (Standard / Breit / Volle Breite)
+  und die Mittellinie zwischen den Spalten per Drag & Drop verschieben
+  (je Seite mindestens ein Viertel, Doppelklick = 50/50)
 - **Komfort**: Bildschirm-Wachhalten (während des Timers) oder „Display immer
   an", Hell/Dunkel/Auto-Design. Ein Tab-Wechsel setzt den laufenden Timer nicht
   zurück – das geschieht nur über die Zurücksetzen-Taste.
@@ -39,10 +42,11 @@ Pomodoro-App als **PWA** (im Browser installierbar) und als **Android-App**
   Timer, <kbd>Tab</kbd> springt auf die markierte Pomodoro-Schätzung. Steht
   Text im Feld, verschieben <kbd>↑</kbd>/<kbd>↓</kbd> die Einfügeposition der
   neuen Aufgabe (als Trennlinie markiert, standardmäßig über der aktuell
-  ausgewählten Aufgabe – in den Einstellungen umstellbar auf darunter) –
+  ausgewählten Aufgabe – in den Einstellungen umstellbar auf darunter; wird
+  währenddessen eine andere Aufgabe ausgewählt, wandert die Linie mit) –
   <kbd>Enter</kbd> fügt dort ein, <kbd>Umschalt</kbd>+<kbd>Enter</kbd> immer
   ganz oben, <kbd>Strg</kbd>+<kbd>Enter</kbd> immer ganz unten. Dazu globale
-  Kürzel (Leertaste, →, R, 1/2/3, N, C, S, E) – Übersicht direkt über das
+  Kürzel (Leertaste, →, R, 1/2/3, N, C, S, E, W) – Übersicht direkt über das
   Tastatur-Symbol in der Kopfzeile oder mit <kbd>?</kbd>.
 - **Offline**: Alle Daten bleiben lokal auf dem Gerät
 

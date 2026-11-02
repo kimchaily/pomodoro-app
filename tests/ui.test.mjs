@@ -11,6 +11,8 @@
  *   9. Task-field autofocus, space-to-start-timer, Tab to the estimate and
  *      the global keyboard shortcuts
  *  10. Insert-position picker for new tasks (arrows + Enter/Ctrl+Enter/Shift+Enter)
+ *  11-12. Insert-above/below setting; the line follows re-selection
+ *  13. Content-width toggle and draggable column splitter (desktop)
  *
  * Run it:
  *   npm install            # once, pulls in playwright (devDependency)
@@ -416,6 +418,115 @@ try {
   await page.click("#btn-settings");
   check("setting persists after reload", await page.locator("#set-insert-above").isChecked(), false);
   await page.click('.close-dialog[data-close="settings-dialog"]');
+
+  /* --- 12. Trennlinie wandert beim Umselektieren mit --- */
+  // Einstellung steht noch auf "darunter"; Alpha ist aktiv.
+  const taskRow = (title) => page.locator(".task-item").filter({
+    has: page.locator(".task-title", { hasText: new RegExp(`^${title}$`) }),
+  });
+  await page.locator("#task-input").type("Iota");
+  n = await indicatorNeighbors();
+  check("line starts below the active task (before)", n.before, "Alpha");
+
+  await taskRow("Beta").locator(".task-title").click();
+  n = await indicatorNeighbors();
+  check("line follows when another task is selected (before)", n.before, "Beta");
+  check("line follows when another task is selected (after)", n.after, "Epsilon");
+  check("focus returns to the task input after reselecting", await activeId(), "task-input");
+  check("typed text survives reselecting", await page.locator("#task-input").inputValue(), "Iota");
+
+  // Manuell verschoben, dann erneut umselektiert: die Auswahl gewinnt wieder.
+  await page.keyboard.press("ArrowUp");
+  n = await indicatorNeighbors();
+  check("arrow still moves the line manually", n.after, "Beta");
+  await taskRow("Gamma").locator(".task-title").click();
+  n = await indicatorNeighbors();
+  check("reselecting after a manual move snaps to the new selection (before)", n.before, "Gamma");
+  check("reselecting after a manual move snaps to the new selection (after)", n.after, "Eta");
+  await page.keyboard.press("Enter");
+  await checkTitles("enter inserts next to the newly selected task", [
+    "Zeta", "Gamma", "Iota", "Eta", "Alpha", "Theta", "Delta", "Beta", "Epsilon",
+  ]);
+
+  /* --- 13. Inhaltsbreite & ziehbarer Spaltentrenner (Desktop) --- */
+  await page.setViewportSize({ width: 1600, height: 900 });
+  await page.waitForTimeout(150);
+  const widthOf = (sel) => page.locator(sel).evaluate((el) => el.getBoundingClientRect().width);
+  const bodyWidth = () => page.evaluate(() => document.body.dataset.width);
+
+  check("width button visible on desktop", await page.locator("#btn-width").isVisible(), true);
+  check("split handle visible on desktop", await page.locator("#split-handle").isVisible(), true);
+
+  const normalW = await widthOf("main");
+  check("default width is normal", await bodyWidth(), "normal");
+  await page.click("#btn-width");
+  const wideW = await widthOf("main");
+  check("width button → wide", await bodyWidth(), "wide");
+  check("wide is wider than normal", wideW > normalW + 200, true);
+  await page.click("#btn-width");
+  check("width button → full", await bodyWidth(), "full");
+  check("full spans the whole viewport", Math.round(await widthOf("main")), 1600);
+
+  await page.reload({ waitUntil: "networkidle" });
+  check("width persists after reload", await bodyWidth(), "full");
+  await page.click("#btn-width");
+  check("width button cycles back to normal", await bodyWidth(), "normal");
+
+  await page.keyboard.press("Escape"); // Aufgabenfeld verlassen, damit W global greift
+  await page.keyboard.press("w");
+  check("W cycles the width", await bodyWidth(), "wide");
+  await page.keyboard.press("w");
+  await page.keyboard.press("w");
+  check("W wraps around to normal", await bodyWidth(), "normal");
+
+  // Ausgangslage: beide Spalten gleich breit.
+  const timerW0 = await widthOf(".timer-card");
+  const tasksW0 = await widthOf(".tasks-card");
+  check("columns start equal", Math.abs(timerW0 - tasksW0) < 2, true);
+
+  // Trenner 150px nach links ziehen.
+  const hbox = await page.locator("#split-handle").boundingBox();
+  const hx = hbox.x + hbox.width / 2, hy = hbox.y + 60;
+  await page.mouse.move(hx, hy);
+  await page.mouse.down();
+  await page.mouse.move(hx - 150, hy, { steps: 8 });
+  await page.mouse.up();
+  const timerW1 = await widthOf(".timer-card");
+  const tasksW1 = await widthOf(".tasks-card");
+  check("dragging left narrows the timer column by ~150px", Math.abs(timerW0 - 150 - timerW1) < 3, true);
+  check("dragging left widens the task column by ~150px", Math.abs(tasksW0 + 150 - tasksW1) < 3, true);
+
+  await page.reload({ waitUntil: "networkidle" });
+  check("split persists after reload", Math.abs((await widthOf(".timer-card")) - timerW1) < 2, true);
+
+  // Ganz nach links: auf das Minimum geklemmt, Spalte bleibt benutzbar.
+  const hbox2 = await page.locator("#split-handle").boundingBox();
+  await page.mouse.move(hbox2.x + hbox2.width / 2, hbox2.y + 60);
+  await page.mouse.down();
+  await page.mouse.move(5, hbox2.y + 60, { steps: 8 });
+  await page.mouse.up();
+  check("split clamps to a sensible minimum", (await widthOf(".timer-card")) >= 259, true);
+  check("split ratio clamped to 25%",
+    await page.evaluate(() => JSON.parse(localStorage.getItem("pomo.settings")).splitRatio), 0.25);
+
+  // Tastatur auf dem Trenner: → verschiebt, ohne "Überspringen" auszulösen.
+  await page.locator("#split-handle").focus();
+  await page.keyboard.press("ArrowRight");
+  check("arrow right on the handle moves the split",
+    await page.evaluate(() => JSON.parse(localStorage.getItem("pomo.settings")).splitRatio), 0.27);
+  check("arrow right on the handle does not skip the session",
+    await page.evaluate(() => document.body.dataset.mode), "focus");
+
+  // Doppelklick setzt auf 50/50 zurück.
+  await page.locator("#split-handle").dblclick({ position: { x: 20, y: 60 } });
+  check("double-click resets to 50/50",
+    Math.abs((await widthOf(".timer-card")) - (await widthOf(".tasks-card"))) < 2, true);
+
+  // Mobil: kein Breitenschalter, kein Trenner.
+  await page.setViewportSize({ width: 420, height: 900 });
+  await page.waitForTimeout(150);
+  check("width button hidden on mobile", await page.locator("#btn-width").isVisible(), false);
+  check("split handle hidden on mobile", await page.locator("#split-handle").isVisible(), false);
 
   /* --- 3. Tomato icon assets served --- */
   for (const asset of ["icon.svg", "icon-192.png", "icon-512.png"]) {
