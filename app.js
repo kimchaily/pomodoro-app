@@ -29,6 +29,7 @@ const DEFAULT_SETTINGS = {
   font: "system",
   insertAboveActive: true,
   layoutWidth: "normal", splitRatio: 0.5,
+  iconColor: true,
 };
 
 let settings = store.load("pomo.settings", DEFAULT_SETTINGS);
@@ -379,7 +380,8 @@ let insertFollowsActive = true;
 // Standardposition: direkt neben der aktuell ausgewählten Aufgabe (ob darüber
 // oder darunter, legt die Einstellung "insertAboveActive" fest), sonst ans Ende.
 function computeDefaultInsertIndex() {
-  const i = tasks.findIndex((t) => t.active && !t.done);
+  // Folgt der Auswahl – auch wenn diese (per Tastatur) auf einer erledigten Aufgabe steht.
+  const i = tasks.findIndex((t) => t.active);
   if (i === -1) return tasks.length;
   return settings.insertAboveActive ? i : i + 1;
 }
@@ -408,6 +410,43 @@ function addTask(index) {
   saveTasks();
   renderTasks();
   focusTaskInput();   // direkt weiterschreiben können
+}
+
+// ↑/↓ außerhalb der Eingabefelder: Auswahl (Pomodoro-Fokus) eine Aufgabe weiter.
+// Erledigte werden nicht übersprungen, damit X sie wieder öffnen kann; an den
+// Listenenden bleibt die Auswahl stehen.
+function moveActiveTask(delta) {
+  if (!tasks.length) return;
+  const cur = tasks.findIndex((t) => t.active);
+  const next = cur === -1
+    ? (delta > 0 ? 0 : tasks.length - 1)
+    : Math.max(0, Math.min(tasks.length - 1, cur + delta));
+  if (next === cur) return;
+  tasks.forEach((t) => (t.active = false));
+  tasks[next].active = true;
+  if (insertIndex !== null) insertFollowsActive = true;
+  saveTasks();
+  renderTasks();
+  // Pfeiltasten scrollen die Seite nicht mehr – die Auswahl sichtbar halten.
+  document.querySelector("#task-list .task-item.active")?.scrollIntoView({ block: "nearest" });
+}
+
+// Enter / F2 außerhalb der Felder: ausgewählte Aufgabe bearbeiten.
+function editActiveTask() {
+  const task = tasks.find((t) => t.active);
+  if (!task) return;
+  editingTaskId = task.id;
+  renderTasks();
+}
+
+// X: Erledigt-Status der ausgewählten Aufgabe umschalten; die Auswahl bleibt stehen.
+function toggleActiveTaskDone() {
+  const task = tasks.find((t) => t.active);
+  if (!task) return;
+  task.done = !task.done;
+  if (editingTaskId === task.id) editingTaskId = null;
+  saveTasks();
+  renderTasks();
 }
 
 function creditActiveTask() {
@@ -525,38 +564,87 @@ function renderTasks() {
         renderTasks();
       });
 
-      // Titel: normalerweise Text, im Bearbeiten-Modus ein Eingabefeld.
-      let titleEl;
+      // Normal: Titel + Zähler. Im Bearbeiten-Modus: Titel- und Schätzungsfeld,
+      // die sich wie beim Neu-Anlegen bedienen (Tab → Zahl markiert, ↑/↓, − / +).
+      let titleEl, count;
       if (editingTaskId === task.id) {
-        titleEl = document.createElement("input");
-        titleEl.type = "text";
-        titleEl.className = "task-edit-input";
-        titleEl.maxLength = 120;
-        titleEl.value = task.title;
-        titleEl.addEventListener("click", (e) => e.stopPropagation());
+        const editor = document.createElement("div");
+        editor.className = "task-editor";
+        editor.addEventListener("click", (e) => e.stopPropagation());
+
+        const titleInput = document.createElement("input");
+        titleInput.type = "text";
+        titleInput.className = "task-edit-input";
+        titleInput.maxLength = 120;
+        titleInput.value = task.title;
+
+        const stepper = document.createElement("div");
+        stepper.className = "stepper";
+        const estInput = document.createElement("input");
+        estInput.type = "number";
+        estInput.className = "task-edit-est";
+        estInput.min = "1";
+        estInput.max = "20";
+        estInput.inputMode = "numeric";
+        estInput.value = String(task.est);
+        estInput.setAttribute("aria-label", "Geschätzte Pomodoros");
+        const stepBtn = (label, aria, delta) => {
+          const b = document.createElement("button");
+          b.type = "button";
+          b.className = "step-btn";
+          b.textContent = label;
+          b.setAttribute("aria-label", aria);
+          // Fokus im Feld lassen, sonst würde das Verlassen des Felds speichern.
+          b.addEventListener("mousedown", (e) => e.preventDefault());
+          b.addEventListener("click", () => {
+            const v = Math.round(Number(estInput.value) || task.est);
+            estInput.value = String(Math.min(20, Math.max(1, v + delta)));
+          });
+          return b;
+        };
+        stepper.append(stepBtn("−", "Weniger Pomodoros", -1), estInput, stepBtn("+", "Mehr Pomodoros", 1));
+        editor.append(titleInput, stepper);
+
         const commit = () => {
           if (editingTaskId !== task.id) return;
-          const v = titleEl.value.trim();
+          const v = titleInput.value.trim();
           if (v) task.title = v;
+          const est = Math.round(Number(estInput.value));
+          if (Number.isFinite(est) && est > 0) task.est = Math.min(20, Math.max(1, est));
           editingTaskId = null;
           saveTasks();
           renderTasks();
         };
-        titleEl.addEventListener("keydown", (e) => {
+        const cancel = () => { editingTaskId = null; renderTasks(); };
+        const onKey = (e) => {
           if (e.key === "Enter") { e.preventDefault(); commit(); }
-          else if (e.key === "Escape") { e.preventDefault(); editingTaskId = null; renderTasks(); }
+          else if (e.key === "Escape") { e.preventDefault(); cancel(); }
+        };
+        titleInput.addEventListener("keydown", (e) => {
+          if (e.key === "Tab" && !e.shiftKey) { e.preventDefault(); estInput.focus(); estInput.select(); return; }
+          onKey(e);
         });
-        titleEl.addEventListener("blur", commit);
-        focusInput = titleEl;
+        estInput.addEventListener("keydown", (e) => {
+          if (e.key === "Tab" && e.shiftKey) { e.preventDefault(); titleInput.focus(); return; }
+          onKey(e);
+        });
+        estInput.addEventListener("focus", () => estInput.select());
+        // Gespeichert wird erst, wenn der Fokus den Bearbeiten-Bereich verlässt –
+        // so schließt Tab vom Titel zur Zahl den Modus nicht vorzeitig.
+        editor.addEventListener("focusout", (e) => {
+          if (!editor.contains(e.relatedTarget)) commit();
+        });
+
+        titleEl = editor;
+        focusInput = titleInput;
       } else {
         titleEl = document.createElement("span");
         titleEl.className = "task-title";
         titleEl.textContent = task.title;
+        count = document.createElement("span");
+        count.className = "task-count";
+        count.textContent = `${task.donePomos}/${task.est} 🍅`;
       }
-
-      const count = document.createElement("span");
-      count.className = "task-count";
-      count.textContent = `${task.donePomos}/${task.est} 🍅`;
 
       const edit = document.createElement("button");
       edit.type = "button";
@@ -584,7 +672,7 @@ function renderTasks() {
         renderTasks();
       });
 
-      li.append(drag, check, titleEl, count, edit, del);
+      li.append(...[drag, check, titleEl, count, edit, del].filter(Boolean));
       li.addEventListener("click", () => {
         if (editingTaskId) return; // im Bearbeiten-Modus keine Auswahl umschalten
         if (task.done) return;
@@ -956,6 +1044,7 @@ const settingBindings = [
   ["set-vibrate", "vibrate", "checkbox"],
   ["set-wakelock", "wakeLock", "checkbox"],
   ["set-always-on", "alwaysOn", "checkbox"],
+  ["set-icon-color", "iconColor", "checkbox"],
   ["set-theme", "theme", "select"],
   ["set-color-theme", "colorTheme", "select"],
   ["set-font", "font", "select"],
@@ -985,7 +1074,7 @@ function bindSettings() {
 
       store.save("pomo.settings", settings);
 
-      if (key === "theme" || key === "colorTheme") applyTheme();
+      if (key === "theme" || key === "colorTheme" || key === "iconColor") applyTheme();
       if (key === "font") applyFont();
       if (key === "notify" && settings.notify) requestNotifyPermission();
       if (key === "wakeLock" || key === "alwaysOn") updateWakeLock();
@@ -1011,6 +1100,7 @@ function bindSettings() {
 function applyTheme() {
   document.documentElement.dataset.theme = settings.theme;
   document.body.dataset.colorTheme = settings.colorTheme;
+  document.body.dataset.icons = settings.iconColor ? "color" : "mono";
   // Hell/Dunkel greift nur im klassischen Design – bei Farbschemata deaktivieren.
   document.getElementById("set-theme").disabled = settings.colorTheme !== "classic";
   updateMetaThemeColor();
@@ -1263,8 +1353,13 @@ function bindUI() {
 
   document.addEventListener("keydown", (e) => {
     const target = e.target;
-    if (target instanceof HTMLInputElement || target instanceof HTMLSelectElement
-        || target instanceof HTMLTextAreaElement || target?.isContentEditable) return;
+    // In Text-/Zahlenfeldern gehören die Tasten dem Feld. Eine fokussierte
+    // Checkbox dagegen blockiert die Kürzel nicht – nur ihre Leertaste bleibt nativ.
+    const isTextEntry = target instanceof HTMLSelectElement || target instanceof HTMLTextAreaElement
+      || target?.isContentEditable
+      || (target instanceof HTMLInputElement && target.type !== "checkbox");
+    if (isTextEntry) return;
+    if (target instanceof HTMLInputElement && e.code === "Space") return;
     // Browser-/System-Kürzel (Strg+R, Cmd+S …) nicht kapern.
     if (e.ctrlKey || e.metaKey || e.altKey) return;
     if (document.querySelector("dialog[open]")) return;
@@ -1277,7 +1372,19 @@ function bindUI() {
       return;
     }
     if (e.key === "ArrowRight") { e.preventDefault(); skipSession(); return; }
+    if (e.key === "ArrowUp" || e.key === "ArrowDown") {
+      e.preventDefault();
+      moveActiveTask(e.key === "ArrowDown" ? 1 : -1);
+      return;
+    }
+    // Enter gehört einem fokussierten Button (der damit ausgelöst wird); F2 immer.
+    if ((e.key === "Enter" && !(target instanceof HTMLButtonElement)) || e.key === "F2") {
+      e.preventDefault();
+      editActiveTask();
+      return;
+    }
     switch (key) {
+      case "x": e.preventDefault(); toggleActiveTaskDone(); break;
       case "r": e.preventDefault(); resetTimer(); break;
       case "c": e.preventDefault(); resetCycle(); break;
       case "n": e.preventDefault(); focusTaskInput({ select: true }); break;

@@ -110,9 +110,11 @@ main { max-width: 480px; margin: 0 auto; padding: 0 16px 40px; }
   line-height: 1;
 }
 .icon-btn:active { background: var(--accent-soft); }
-/* SVG-Symbole statt Emoji, wo Emoji je nach System schwarz gerendert würden –
-   so folgen sie der Textfarbe des Themes (hell, dunkel, Farbschemata). */
+/* SVG-Symbole statt Emoji: Emoji haben feste (je nach System auch schwarze)
+   Farben. So folgen die Symbole dem Theme – einfarbig in der Textfarbe oder
+   farbig in der Akzentfarbe (wechselt mit Modus und Farbschema). */
 .icon-btn { color: var(--text); }
+body[data-icons="color"] .topbar-actions .icon-btn { color: var(--accent); }
 .icon-btn svg { display: block; width: 1.25rem; height: 1.25rem; }
 
 .mode-tabs {
@@ -324,6 +326,10 @@ body.dragging-task { cursor: grabbing; user-select: none; }
 .task-check { width: 20px; height: 20px; accent-color: var(--accent); flex-shrink: 0; }
 .task-title { flex: 1; word-break: break-word; }
 .task-edit-input { flex: 1; min-width: 0; padding: 6px 8px; font-size: 1rem; }
+/* Bearbeiten-Modus: Titel + Schätzung; auf schmalen Screens zweizeilig. */
+.task-editor { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; align-items: stretch; gap: 6px; }
+.task-editor .task-edit-input { flex: 1 1 140px; }
+.task-editor .stepper input[type="number"] { padding-top: 6px; padding-bottom: 6px; }
 .task-count { color: var(--muted); font-size: .85rem; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .task-edit, .task-del {
   background: none; border: none;
