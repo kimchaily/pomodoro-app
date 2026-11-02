@@ -110,6 +110,10 @@ main { max-width: 480px; margin: 0 auto; padding: 0 16px 40px; }
   line-height: 1;
 }
 .icon-btn:active { background: var(--accent-soft); }
+/* SVG-Symbole statt Emoji, wo Emoji je nach System schwarz gerendert würden –
+   so folgen sie der Textfarbe des Themes (hell, dunkel, Farbschemata). */
+.icon-btn { color: var(--text); }
+.icon-btn svg { display: block; width: 1.25rem; height: 1.25rem; }
 
 .mode-tabs {
   display: flex;

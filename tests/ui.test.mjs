@@ -522,6 +522,16 @@ try {
   check("double-click resets to 50/50",
     Math.abs((await widthOf(".timer-card")) - (await widthOf(".tasks-card"))) < 2, true);
 
+  // Symbole folgen der Textfarbe des Themes – keine schwarzen Emoji im Dunkelmodus.
+  const iconColor = (id) => page.locator(`#${id} svg`).evaluate((el) => getComputedStyle(el).color);
+  await page.evaluate(() => { document.documentElement.dataset.theme = "dark"; });
+  check("shortcuts icon is light in dark mode", await iconColor("btn-shortcuts"), "rgb(236, 236, 236)");
+  check("width icon is light in dark mode", await iconColor("btn-width"), "rgb(236, 236, 236)");
+  await page.evaluate(() => { document.documentElement.dataset.theme = "light"; });
+  check("shortcuts icon is dark in light mode", await iconColor("btn-shortcuts"), "rgb(43, 43, 43)");
+  check("width icon is dark in light mode", await iconColor("btn-width"), "rgb(43, 43, 43)");
+  await page.evaluate(() => { document.documentElement.dataset.theme = "auto"; });
+
   // Mobil: kein Breitenschalter, kein Trenner.
   await page.setViewportSize({ width: 420, height: 900 });
   await page.waitForTimeout(150);
