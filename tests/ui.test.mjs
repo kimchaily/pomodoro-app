@@ -12,7 +12,9 @@
  *      the global keyboard shortcuts
  *  10. Insert-position picker for new tasks (arrows + Enter/Ctrl+Enter/Shift+Enter)
  *  11-12. Insert-above/below setting; the line follows re-selection
- *  13. Content-width toggle and draggable column splitter (desktop)
+ *  13. Content-width toggle, draggable column splitter, themed icons
+ *  14. Keyboard list navigation (↑/↓ select, X done, Enter/F2 edit)
+ *  15. Editing a task's estimate
  *
  * Run it:
  *   npm install            # once, pulls in playwright (devDependency)
@@ -522,9 +524,22 @@ try {
   check("double-click resets to 50/50",
     Math.abs((await widthOf(".timer-card")) - (await widthOf(".tasks-card"))) < 2, true);
 
-  // Symbole folgen der Textfarbe des Themes – keine schwarzen Emoji im Dunkelmodus.
+  // Symbole folgen dem Theme: standardmäßig in der Akzentfarbe (wechselt mit
+  // dem Modus), per Einstellung einfarbig in der Textfarbe.
   const iconColor = (id) => page.locator(`#${id} svg`).evaluate((el) => getComputedStyle(el).color);
+  check("all topbar icons are SVG", await page.locator(".topbar-actions .icon-btn:not(:has(svg))").count(), 0);
+  check("icons use the accent color by default", await iconColor("btn-settings"), "rgb(226, 85, 85)");
+  check("…on every topbar icon", await iconColor("btn-stats"), "rgb(226, 85, 85)");
+  await page.keyboard.press("2");
+  check("colored icons follow the mode (short break = green)", await iconColor("btn-shortcuts"), "rgb(61, 153, 112)");
+  await page.keyboard.press("1");
+
+  await page.click("#btn-settings");
+  check("colored icons setting is on by default", await page.locator("#set-icon-color").isChecked(), true);
+  await page.locator("#set-icon-color").uncheck();
+  await page.click('.close-dialog[data-close="settings-dialog"]');
   await page.evaluate(() => { document.documentElement.dataset.theme = "dark"; });
+  check("monochrome settings icon is light in dark mode", await iconColor("btn-settings"), "rgb(236, 236, 236)");
   check("shortcuts icon is light in dark mode", await iconColor("btn-shortcuts"), "rgb(236, 236, 236)");
   check("width icon is light in dark mode", await iconColor("btn-width"), "rgb(236, 236, 236)");
   await page.evaluate(() => { document.documentElement.dataset.theme = "light"; });
@@ -537,6 +552,113 @@ try {
   await page.waitForTimeout(150);
   check("width button hidden on mobile", await page.locator("#btn-width").isVisible(), false);
   check("split handle hidden on mobile", await page.locator("#split-handle").isVisible(), false);
+
+  /* --- 14. Aufgabenliste per Tastatur: ↑/↓ auswählen, X erledigt, Enter/F2 bearbeiten --- */
+  const activeTitle = () => page.evaluate(() =>
+    document.querySelector("#task-list .task-item.active .task-title")?.textContent ?? null);
+  const isDone = (title) => taskRow(title).evaluate((el) => el.classList.contains("done"));
+  await page.evaluate(() => document.activeElement?.blur());
+
+  check("start: Gamma is selected", await activeTitle(), "Gamma");
+  await page.keyboard.press("ArrowDown");
+  check("↓ selects the task below", await activeTitle(), "Iota");
+  await page.keyboard.press("ArrowUp");
+  await page.keyboard.press("ArrowUp");
+  check("↑ selects the task above", await activeTitle(), "Zeta");
+  await page.keyboard.press("ArrowUp");
+  check("↑ stops at the top", await activeTitle(), "Zeta");
+
+  await page.keyboard.press("x");
+  check("X marks the selected task done", await isDone("Zeta"), true);
+  check("selection stays on the task after X", await activeTitle(), "Zeta");
+  check("no current task shown while a done task is selected",
+    await page.locator("#active-task-display").isHidden(), true);
+  await page.keyboard.press("ArrowDown");
+  await page.keyboard.press("ArrowUp");
+  check("done tasks are not skipped", await activeTitle(), "Zeta");
+  await page.keyboard.press("x");
+  check("X reopens the task", await isDone("Zeta"), false);
+  check("current task shown again", await page.locator("#active-task-name").textContent(), "Zeta");
+
+  // Nach einem Klick auf eine Checkbox greifen die Pfeile weiterhin.
+  await taskRow("Beta").locator(".task-check").click();
+  check("checkbox click marks Beta done", await isDone("Beta"), true);
+  await page.keyboard.press("ArrowDown");
+  check("↓ works after clicking a checkbox", await activeTitle(), "Gamma");
+
+  await page.keyboard.press("Enter");
+  check("Enter opens the selected task for editing",
+    await page.locator(".task-item.active .task-edit-input").count(), 1);
+  check("title field gets the focus",
+    await page.evaluate(() => document.activeElement?.classList.contains("task-edit-input")), true);
+  await page.keyboard.press("Escape");
+  check("Esc leaves edit mode", await page.locator(".task-edit-input").count(), 0);
+  await page.keyboard.press("ArrowDown");
+  check("arrows work right after editing", await activeTitle(), "Iota");
+  await page.keyboard.press("F2");
+  check("F2 opens editing too", await page.locator(".task-item.active .task-edit-input").count(), 1);
+  await page.keyboard.press("Escape");
+
+  // Enter auf einem fokussierten Button löst weiterhin den Button aus.
+  await page.locator("#btn-start").focus();
+  await page.keyboard.press("Enter");
+  check("Enter on a focused button keeps its own action", await page.textContent("#btn-start"), "Pause");
+  check("…and does not open editing", await page.locator(".task-edit-input").count(), 0);
+  await page.keyboard.press("Enter");
+  check("Enter on the button pauses again", await page.textContent("#btn-start"), "Start");
+
+  // Text im Feld stehen lassen und Feld verlassen: die Linie folgt der Pfeil-Auswahl.
+  await page.locator("#task-input").fill("Kappa");
+  await page.keyboard.press("Escape");
+  n = await indicatorNeighbors();
+  check("line sits next to the selection (Iota)", n.before, "Iota");
+  await page.keyboard.press("ArrowUp");
+  n = await indicatorNeighbors();
+  check("line follows the arrow selection", n.before, "Gamma");
+  await page.locator("#task-input").fill("");
+  await page.keyboard.press("Escape");
+
+  /* --- 15. Schätzung beim Bearbeiten ändern --- */
+  const countOf = async (title) => (await taskRow(title).locator(".task-count").textContent()).replace(/\s*🍅$/, "");
+  const editRow = page.locator(".task-item").filter({ has: page.locator(".task-editor") });
+  const editEst = editRow.locator(".task-edit-est");
+  const focusedClass = () => page.evaluate(() => document.activeElement?.className ?? "");
+
+  await taskRow("Alpha").locator(".task-edit").click();
+  check("edit mode shows the estimate", await editEst.inputValue(), "1");
+  await page.keyboard.press("Tab");
+  check("Tab jumps from the title to the estimate", await focusedClass(), "task-edit-est");
+  check("still in edit mode after Tab", await page.locator(".task-editor").count(), 1);
+  await page.keyboard.type("4");
+  check("typing overwrites the selected estimate", await editEst.inputValue(), "4");
+  await page.keyboard.press("ArrowUp");
+  check("↑ increments the estimate", await editEst.inputValue(), "5");
+  await page.keyboard.press("Enter");
+  check("Enter saves the new estimate", await countOf("Alpha"), "0/5");
+
+  await taskRow("Alpha").locator(".task-edit").click();
+  await page.keyboard.press("Tab");
+  await page.keyboard.type("9");
+  await editRow.locator(".step-btn").last().click();
+  check("+ button increments while editing", await editEst.inputValue(), "10");
+  check("+ button keeps edit mode open", await page.locator(".task-editor").count(), 1);
+  await page.keyboard.press("Escape");
+  check("Esc discards the estimate change", await countOf("Alpha"), "0/5");
+
+  await taskRow("Alpha").locator(".task-edit").click();
+  await page.keyboard.press("Tab");
+  await page.keyboard.type("3");
+  await page.click(".tasks-card h2");
+  check("clicking outside saves", await countOf("Alpha"), "0/3");
+
+  await taskRow("Alpha").locator(".task-edit").click();
+  await page.keyboard.press("Tab");
+  await page.keyboard.type("50");
+  await page.keyboard.press("Shift+Tab");
+  check("Shift+Tab goes back to the title", await focusedClass(), "task-edit-input");
+  await editRow.locator(".task-edit-input").fill("Alpha 2");
+  await page.keyboard.press("Enter");
+  check("title and estimate saved together, estimate clamped to 20", await countOf("Alpha 2"), "0/20");
 
   /* --- 3. Tomato icon assets served --- */
   for (const asset of ["icon.svg", "icon-192.png", "icon-512.png"]) {

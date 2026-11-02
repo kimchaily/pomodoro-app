@@ -16,8 +16,19 @@
   <header class="topbar">
     <h1>🍅 Pomodoro</h1>
     <div class="topbar-actions">
-      <button id="btn-install" class="icon-btn" hidden title="App installieren">⬇️</button>
-      <button id="btn-stats" class="icon-btn" title="Statistik" aria-label="Statistik">📊</button>
+      <button id="btn-install" class="icon-btn" hidden title="App installieren" aria-label="App installieren">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M12 4v11M7.5 10.5 12 15l4.5-4.5M5 19h14"/>
+        </svg>
+      </button>
+      <button id="btn-stats" class="icon-btn" title="Statistik (S)" aria-label="Statistik">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M4 20h16"/>
+          <rect x="5.5" y="11" width="3" height="6" rx="1"/>
+          <rect x="10.5" y="5" width="3" height="12" rx="1"/>
+          <rect x="15.5" y="8" width="3" height="9" rx="1"/>
+        </svg>
+      </button>
       <button id="btn-shortcuts" class="icon-btn" title="Tastenkürzel (?)" aria-label="Tastenkürzel">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <rect x="2" y="6" width="20" height="12" rx="2"/>
@@ -29,7 +40,13 @@
           <path d="M3 5v14M21 5v14M7 12h10M10 9l-3 3 3 3M14 9l3 3-3 3"/>
         </svg>
       </button>
-      <button id="btn-settings" class="icon-btn" title="Einstellungen" aria-label="Einstellungen">⚙️</button>
+      <button id="btn-settings" class="icon-btn" title="Einstellungen (E)" aria-label="Einstellungen">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="6.5"/>
+          <circle cx="12" cy="12" r="2.5"/>
+          <path stroke-width="2.6" d="M18.5 12h2.5M16.6 16.6l1.8 1.8M12 18.5V21M7.4 16.6l-1.8 1.8M5.5 12H3M7.4 7.4 5.6 5.6M12 5.5V3M16.6 7.4l1.8-1.8"/>
+        </svg>
+      </button>
     </div>
   </header>
 
@@ -145,6 +162,7 @@
     <h3>Anzeige</h3>
     <div class="setting-row"><label for="set-wakelock">Bildschirm wachhalten (während Timer läuft)</label><input type="checkbox" id="set-wakelock"></div>
     <div class="setting-row"><label for="set-always-on">Display immer an</label><input type="checkbox" id="set-always-on"></div>
+    <div class="setting-row"><label for="set-icon-color">Farbige Symbole (in der Akzentfarbe des Themes)</label><input type="checkbox" id="set-icon-color"></div>
     <div class="setting-row"><label for="set-color-theme">Farbschema</label>
       <select id="set-color-theme">
         <option value="classic">Klassisch</option>
@@ -213,6 +231,15 @@
       <dt><kbd>Strg</kbd>+<kbd>Enter</kbd></dt><dd>Ganz unten einfügen</dd>
       <dt><kbd>Tab</kbd></dt><dd>Vom Aufgabenfeld zur Pomodoro-Schätzung (Wert ist markiert, Pfeiltasten ändern dort die Zahl)</dd>
       <dt><kbd>Esc</kbd></dt><dd>Eingabefeld verlassen</dd>
+    </dl>
+
+    <h3>Aufgabenliste</h3>
+    <dl class="keys">
+      <dt><kbd>↑</kbd> <kbd>↓</kbd></dt><dd>Außerhalb der Felder: vorherige / nächste Aufgabe als Fokus auswählen</dd>
+      <dt><kbd>X</kbd></dt><dd>Ausgewählte Aufgabe erledigt / wieder offen</dd>
+      <dt><kbd>Enter</kbd> / <kbd>F2</kbd></dt><dd>Ausgewählte Aufgabe bearbeiten</dd>
+      <dt><kbd>Tab</kbd></dt><dd>Beim Bearbeiten: vom Titel zur Schätzung (Wert ist markiert)</dd>
+      <dt><kbd>Enter</kbd> / <kbd>Esc</kbd></dt><dd>Beim Bearbeiten: speichern / verwerfen</dd>
     </dl>
 
     <h3>Ansicht</h3>
