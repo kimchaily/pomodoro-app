@@ -28,6 +28,7 @@ const DEFAULT_SETTINGS = {
   wakeLock: false, alwaysOn: false, theme: "auto", colorTheme: "classic",
   font: "system",
   insertAboveActive: true,
+  layoutWidth: "normal", splitRatio: 0.5,
 };
 
 let settings = store.load("pomo.settings", DEFAULT_SETTINGS);
@@ -371,6 +372,9 @@ let editingTaskId = null;
 // verschieben sie); null = noch nicht festgelegt – Feld ist leer oder gerade
 // erst befüllt worden, dann gilt beim nächsten Tastendruck der Standard.
 let insertIndex = null;
+// Solange die Linie nicht per Pfeiltaste verschoben wurde, klebt sie an der
+// aktiven Aufgabe und wandert mit, wenn eine andere ausgewählt wird.
+let insertFollowsActive = true;
 
 // Standardposition: direkt neben der aktuell ausgewählten Aufgabe (ob darüber
 // oder darunter, legt die Einstellung "insertAboveActive" fest), sonst ans Ende.
@@ -482,6 +486,7 @@ function renderTasks() {
     list.innerHTML = "";
     let focusInput = null;
 
+    if (insertIndex !== null && insertFollowsActive) insertIndex = computeDefaultInsertIndex();
     const showInsertMark = insertIndex !== null;
     const markAt = showInsertMark ? clampInsertIndex(insertIndex) : -1;
     const insertMark = () => {
@@ -587,7 +592,12 @@ function renderTasks() {
         tasks.forEach((t) => (t.active = false));
         task.active = !wasActive;
         saveTasks();
+        // Mitten im Tippen umselektiert: Linie springt zur neuen Auswahl, und
+        // der Cursor kehrt ins Feld zurück, damit Enter direkt dort einfügt.
+        const composing = insertIndex !== null;
+        if (composing) insertFollowsActive = true;
         renderTasks();
+        if (composing) focusTaskInput();
       });
       list.append(li);
     });
@@ -1010,6 +1020,96 @@ function applyFont() {
   document.body.dataset.font = settings.font;
 }
 
+/* Inhaltsbreite & geteilte Ansicht (nur im zweispaltigen Desktop-Layout sichtbar). */
+const LAYOUT_WIDTHS = ["normal", "wide", "full"];
+const WIDTH_LABEL = { normal: "Standard", wide: "Breit", full: "Volle Breite" };
+// Keine Spalte schmaler als ein Viertel – zusätzlich sichert das CSS 260px Minimum.
+const SPLIT_MIN = 0.25, SPLIT_MAX = 0.75;
+
+function clampSplit(r) {
+  const v = Number(r);
+  return Number.isFinite(v) ? Math.min(SPLIT_MAX, Math.max(SPLIT_MIN, v)) : 0.5;
+}
+
+function applyLayout() {
+  const width = LAYOUT_WIDTHS.includes(settings.layoutWidth) ? settings.layoutWidth : "normal";
+  document.body.dataset.width = width;
+  const btn = document.getElementById("btn-width");
+  btn.title = `Inhaltsbreite: ${WIDTH_LABEL[width]} (W)`;
+  btn.setAttribute("aria-label", `Inhaltsbreite: ${WIDTH_LABEL[width]} – umschalten`);
+
+  // Als fr-Werte mit Summe 100, damit die Spalten den Platz immer ganz füllen.
+  const r = clampSplit(settings.splitRatio);
+  const main = document.querySelector("main");
+  main.style.setProperty("--split-left", `${(r * 100).toFixed(2)}fr`);
+  main.style.setProperty("--split-right", `${((1 - r) * 100).toFixed(2)}fr`);
+  document.getElementById("split-handle").setAttribute("aria-valuenow", String(Math.round(r * 100)));
+}
+
+function cycleLayoutWidth() {
+  const i = LAYOUT_WIDTHS.indexOf(settings.layoutWidth);
+  settings.layoutWidth = LAYOUT_WIDTHS[(i + 1) % LAYOUT_WIDTHS.length];
+  store.save("pomo.settings", settings);
+  applyLayout();
+}
+
+function setSplitRatio(r, { persist = true } = {}) {
+  settings.splitRatio = clampSplit(r);
+  if (persist) store.save("pomo.settings", settings);
+  applyLayout();
+}
+
+// Mittellinie per Maus/Touch ziehen; fokussiert auch per ← / → verschiebbar.
+function bindSplitHandle() {
+  const handle = document.getElementById("split-handle");
+  const main = document.querySelector("main");
+
+  handle.addEventListener("pointerdown", (e) => {
+    if (e.pointerType === "mouse" && e.button !== 0) return;
+    e.preventDefault();
+    const pointerId = e.pointerId;
+    try { handle.setPointerCapture(pointerId); } catch { /* nicht unterstützt */ }
+    handle.classList.add("dragging");
+    document.body.classList.add("resizing-split");
+
+    const onMove = (ev) => {
+      if (ev.pointerId !== pointerId) return;
+      const rect = main.getBoundingClientRect();
+      const cs = getComputedStyle(main);
+      const contentLeft = rect.left + parseFloat(cs.paddingLeft);
+      const contentWidth = rect.width - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+      const handleWidth = handle.getBoundingClientRect().width;
+      const avail = contentWidth - handleWidth;
+      if (avail <= 0) return;
+      setSplitRatio((ev.clientX - contentLeft - handleWidth / 2) / avail, { persist: false });
+    };
+    const finish = (ev) => {
+      if (ev && ev.pointerId !== pointerId) return;
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", finish);
+      window.removeEventListener("pointercancel", finish);
+      try { handle.releasePointerCapture(pointerId); } catch { /* schon frei */ }
+      handle.classList.remove("dragging");
+      document.body.classList.remove("resizing-split");
+      store.save("pomo.settings", settings);
+    };
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", finish);
+    window.addEventListener("pointercancel", finish);
+  });
+
+  handle.addEventListener("dblclick", () => setSplitRatio(0.5));
+
+  handle.addEventListener("keydown", (e) => {
+    const step = { ArrowLeft: -0.02, ArrowRight: 0.02 }[e.key];
+    if (step === undefined) return;
+    // Sonst würde der globale Kürzel-Handler → als "Überspringen" werten.
+    e.preventDefault();
+    e.stopPropagation();
+    setSplitRatio(clampSplit(settings.splitRatio) + step);
+  });
+}
+
 // Browser-/Statusleiste an die aktuelle Hintergrundfarbe angleichen.
 function updateMetaThemeColor() {
   const meta = document.querySelector('meta[name="theme-color"]');
@@ -1056,6 +1156,8 @@ function bindUI() {
   // Dialoge
   document.getElementById("btn-stats").addEventListener("click", () => openDialog("stats-dialog"));
   document.getElementById("btn-shortcuts").addEventListener("click", () => openDialog("shortcuts-dialog"));
+  document.getElementById("btn-width").addEventListener("click", cycleLayoutWidth);
+  bindSplitHandle();
   document.getElementById("btn-settings").addEventListener("click", () => openDialog("settings-dialog"));
   document.querySelectorAll(".close-dialog").forEach((btn) => {
     btn.addEventListener("click", () => document.getElementById(btn.dataset.close).close());
@@ -1105,6 +1207,7 @@ function bindUI() {
     if ((e.key === "ArrowUp" || e.key === "ArrowDown") && taskInput.value.trim() !== "") {
       e.preventDefault();
       if (insertIndex === null) insertIndex = computeDefaultInsertIndex();
+      insertFollowsActive = false;
       insertIndex = clampInsertIndex(insertIndex + (e.key === "ArrowDown" ? 1 : -1));
       renderTasks();
       return;
@@ -1128,7 +1231,11 @@ function bindUI() {
       if (insertIndex !== null) { insertIndex = null; renderTasks(); }
       return;
     }
-    if (insertIndex === null) { insertIndex = computeDefaultInsertIndex(); renderTasks(); }
+    if (insertIndex === null) {
+      insertFollowsActive = true;
+      insertIndex = computeDefaultInsertIndex();
+      renderTasks();
+    }
   });
 
   est.addEventListener("keydown", (e) => {
@@ -1176,6 +1283,7 @@ function bindUI() {
       case "n": e.preventDefault(); focusTaskInput({ select: true }); break;
       case "s": e.preventDefault(); openDialog("stats-dialog"); break;
       case "e": e.preventDefault(); openDialog("settings-dialog"); break;
+      case "w": e.preventDefault(); cycleLayoutWidth(); break;
       case "?": e.preventDefault(); openDialog("shortcuts-dialog"); break;
     }
   });
@@ -1209,6 +1317,7 @@ if ("serviceWorker" in navigator) {
 
 applyTheme();
 applyFont();
+applyLayout();
 loadSettingsUI();
 bindSettings();
 bindUI();

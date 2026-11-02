@@ -110,6 +110,10 @@ main { max-width: 480px; margin: 0 auto; padding: 0 16px 40px; }
   line-height: 1;
 }
 .icon-btn:active { background: var(--accent-soft); }
+/* SVG-Symbole statt Emoji, wo Emoji je nach System schwarz gerendert würden –
+   so folgen sie der Textfarbe des Themes (hell, dunkel, Farbschemata). */
+.icon-btn { color: var(--text); }
+.icon-btn svg { display: block; width: 1.25rem; height: 1.25rem; }
 
 .mode-tabs {
   display: flex;
@@ -447,17 +451,22 @@ kbd {
    Mobil bleibt die schmale, zentrierte Spalte (Design der App). Ab Tablet-Breite
    nutzt das Layout die Fläche: Timer links, Aufgaben rechts, und die Dialoge
    erscheinen als zentrierte Modals statt als Bottom-Sheets. */
+/* Breitenschalter und Spaltentrenner gibt es nur im zweispaltigen Layout. */
+.width-btn, .split-handle { display: none; }
+
 @media (min-width: 760px) {
   .topbar { max-width: 900px; }
 
+  /* Mittlere Spalte = ziehbarer Trenner. Das Verhältnis setzt app.js über
+     --split-left/--split-right; 260px Minimum hält beide Seiten benutzbar. */
   main {
     max-width: 900px;
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-columns:
+      minmax(260px, var(--split-left, 50fr)) 40px minmax(260px, var(--split-right, 50fr));
     grid-template-areas:
-      "tabs  tasks"
-      "timer tasks";
-    column-gap: 40px;
+      "tabs  split tasks"
+      "timer split tasks";
     align-items: start;
     padding-bottom: 48px;
   }
@@ -465,8 +474,48 @@ kbd {
   .timer-card { grid-area: timer; align-self: start; }
   .tasks-card { grid-area: tasks; margin-top: 0; }
 
-  /* Etwas größerer Ring, da die Spalte breiter ist. */
-  .ring-wrap { width: min(40vw, 360px); }
+  .width-btn { display: inline-block; }
+  body[data-width="wide"] .topbar, body[data-width="wide"] main { max-width: 1400px; }
+  body[data-width="full"] .topbar, body[data-width="full"] main { max-width: none; }
+
+  .split-handle {
+    display: block;
+    grid-area: split;
+    align-self: stretch;
+    position: relative;
+    cursor: col-resize;
+    touch-action: none;
+    outline: none;
+  }
+  .split-handle::before {
+    content: "";
+    position: absolute;
+    top: 0; bottom: 0; left: 50%;
+    width: 2px;
+    transform: translateX(-50%);
+    border-radius: 1px;
+    background: var(--ring-track);
+    opacity: .5;
+    transition: opacity .15s, background-color .15s;
+  }
+  .split-handle::after {
+    content: "";
+    position: absolute;
+    top: 50%; left: 50%;
+    width: 6px; height: 40px;
+    transform: translate(-50%, -50%);
+    border-radius: 3px;
+    background: var(--ring-track);
+    transition: background-color .15s;
+  }
+  .split-handle:hover::before, .split-handle:focus-visible::before,
+  .split-handle.dragging::before { opacity: 1; background: var(--accent); }
+  .split-handle:hover::after, .split-handle:focus-visible::after,
+  .split-handle.dragging::after { background: var(--accent); }
+  body.resizing-split { cursor: col-resize; user-select: none; }
+
+  /* Etwas größerer Ring, aber nie breiter als die (verstellbare) Spalte. */
+  .ring-wrap { width: min(100%, 40vw, 360px); }
 
   /* Dialoge als zentrierte Modals statt Bottom-Sheets. */
   .sheet {
@@ -482,5 +531,5 @@ kbd {
 /* Große Desktop-Fenster: nicht endlos breit werden lassen. */
 @media (min-width: 1180px) {
   .topbar, main { max-width: 1000px; }
-  .ring-wrap { width: min(34vw, 380px); }
+  .ring-wrap { width: min(100%, 34vw, 380px); }
 }
