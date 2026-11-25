@@ -1,6 +1,10 @@
 "use strict";
 
-const CACHE_NAME = "pomodoro-v14";
+// Network-first: Online – und in der Android-App, wo "Netzwerk" die in der APK
+// gebündelten Dateien sind – kommt immer die aktuelle Version; der Cache ist nur
+// der Offline-Fallback. Deshalb bleibt CACHE_NAME über Releases gleich: sw.js
+// ändert sich nur, wenn sich die Worker-Logik ändert.
+const CACHE_NAME = "pomodoro-offline";
 const ASSETS = [
   "./",
   "./index.html",
@@ -19,30 +23,43 @@ self.addEventListener("install", (event) => {
 });
 
 self.addEventListener("activate", (event) => {
-  event.waitUntil(
-    caches.keys()
-      .then((keys) => Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k))))
-      .then(() => self.clients.claim())
-  );
+  const activated = (async () => {
+    const stale = (await caches.keys()).filter((k) => k !== CACHE_NAME);
+    await Promise.all(stale.map((k) => caches.delete(k)));
+    await self.clients.claim();
+    return stale.length > 0;
+  })();
+  event.waitUntil(activated);
+  // Ablösung des früheren Cache-first-Workers: offene Fenster zeigen noch die
+  // alte Version aus dessen Cache – einmal neu laden, damit sie sofort aktuell
+  // sind. Bewusst NICHT in waitUntil: die Navigation braucht einen aktivierten
+  // Worker, darauf zu warten würde die Aktivierung (und jeden Seitenaufruf) blockieren.
+  activated.then(async (upgraded) => {
+    if (!upgraded) return;
+    const windows = await self.clients.matchAll({ type: "window" });
+    windows.forEach((c) => c.navigate(c.url).catch(() => {}));
+  });
 });
 
-// Cache-first mit Netzwerk-Fallback; erfolgreiche Antworten aktualisieren den Cache.
 self.addEventListener("fetch", (event) => {
-  if (event.request.method !== "GET") return;
-  event.respondWith(
-    caches.match(event.request).then((cached) => {
-      const fetched = fetch(event.request)
-        .then((response) => {
-          if (response.ok && new URL(event.request.url).origin === self.location.origin) {
-            const copy = response.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
-          }
-          return response;
-        })
-        .catch(() => cached);
-      return cached || fetched;
-    })
-  );
+  const req = event.request;
+  if (req.method !== "GET" || new URL(req.url).origin !== self.location.origin) return;
+  event.respondWith((async () => {
+    try {
+      const res = await fetch(req);
+      // Anfragen mit Query (z. B. version.json?t=…) nicht cachen – jede wäre ein neuer Eintrag.
+      if (res.ok && !new URL(req.url).search) {
+        const copy = res.clone();
+        event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.put(req, copy)));
+      }
+      return res;
+    } catch {
+      const cached = await caches.match(req, { ignoreSearch: req.mode === "navigate" });
+      if (cached) return cached;
+      if (req.mode === "navigate") return (await caches.match("./")) || Response.error();
+      return Response.error();
+    }
+  })());
 });
 
 self.addEventListener("notificationclick", (event) => {

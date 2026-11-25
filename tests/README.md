@@ -29,6 +29,13 @@ if anything fails.
   up to date / unknown dev build) and the download call with the release URL.
 - The "install unknown apps" permission hint when installs aren't allowed.
 
+`tests/sw.test.mjs` (eigener Server, der je Phase eine andere App-Version ausliefert):
+- **Updates sofort sichtbar** – nach einem Update (Browser/PWA oder neue APK)
+  zeigt schon der erste Start die neue Version; der frühere Cache-first-Worker
+  (`tests/fixtures/sw-cache-first.js`) wird abgelöst und lädt offene Fenster
+  einmal neu. Folge-Releases sind ohne Neuladen sofort da.
+- **Offline** – die zuletzt geladene Version startet aus dem Cache.
+
 ### Notes
 
 - If Chromium is installed somewhere non-standard, point the test at it:
